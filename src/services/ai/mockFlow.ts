@@ -39,6 +39,8 @@ function clean(step: string): string {
       '',
     )
     .replace(/(해줘|해주세요|주세요|그려줘|만들어줘)$/g, '')
+    .replace(/\s+(를|을|이|가|은|는|의|에|로|으로)(?=\s|$)/g, '')
+    .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
