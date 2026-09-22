@@ -402,9 +402,12 @@ export const useFlowStore = create<FlowState>((set, get) => {
       if (nodes.length === 0) return;
       pushHistory();
       const dir = direction ?? layoutDirection;
-      const unpinned = nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
+      const directionChanged = dir !== layoutDirection;
+      const input = directionChanged
+        ? nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }))
+        : nodes;
       set({
-        nodes: layoutFlow(unpinned, edges, { direction: dir, respectPinned: false }),
+        nodes: layoutFlow(input, edges, { direction: dir, respectPinned: !directionChanged }),
         layoutDirection: dir,
         fitViewToken: get().fitViewToken + 1,
       });

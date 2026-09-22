@@ -1,4 +1,4 @@
-import { getNodesBounds, getViewportForBounds, type Node } from '@xyflow/react';
+import { getNodesBounds, type Node } from '@xyflow/react';
 import { toPng, toSvg } from 'html-to-image';
 import { saveAs } from 'file-saver';
 import type { FlowProject } from '../types/flow';
@@ -24,9 +24,16 @@ function getViewportElement(): HTMLElement {
 
 function computeFrame(nodes: Node[]) {
   const bounds = getNodesBounds(nodes);
-  const width = Math.min(MAX_DIMENSION, Math.ceil(bounds.width + PADDING * 2));
-  const height = Math.min(MAX_DIMENSION, Math.ceil(bounds.height + PADDING * 2));
-  const viewport = getViewportForBounds(bounds, width, height, 0.1, 4, PADDING);
+  const rawWidth = bounds.width + PADDING * 2;
+  const rawHeight = bounds.height + PADDING * 2;
+  const zoom = Math.min(1, MAX_DIMENSION / rawWidth, MAX_DIMENSION / rawHeight);
+  const width = Math.ceil(rawWidth * zoom);
+  const height = Math.ceil(rawHeight * zoom);
+  const viewport = {
+    x: (PADDING - bounds.x) * zoom,
+    y: (PADDING - bounds.y) * zoom,
+    zoom,
+  };
   return { width, height, viewport };
 }
 
