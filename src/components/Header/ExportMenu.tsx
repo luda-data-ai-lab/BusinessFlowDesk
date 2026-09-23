@@ -7,7 +7,8 @@ import { Button } from '../common/Button';
 export function ExportMenu() {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const { busy, error, exportPng, exportSvg, exportJson, importJson } = useExport();
+  const { busy, error, copied, exportPng, exportSvg, exportJson, importJson, shareLink } =
+    useExport();
   const hasNodes = useFlowStore((s) => s.nodes.length > 0);
   const fileRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -55,6 +56,8 @@ export function ExportMenu() {
           {item(`🧩 ${t('exportSvg')}`, exportSvg, !hasNodes)}
           {item(`💾 ${t('exportJson')}`, exportJson, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
+          {item(`🔗 ${t('shareLink')}`, shareLink, !hasNodes)}
+          <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`📂 ${t('importJson')}`, () => fileRef.current?.click())}
         </div>
       )}
@@ -69,6 +72,14 @@ export function ExportMenu() {
           e.target.value = '';
         }}
       />
+      {copied && (
+        <div
+          role="status"
+          className="absolute right-0 mt-1 w-56 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700 shadow dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+        >
+          ✓ {t('shareCopied')}
+        </div>
+      )}
       {error && (
         <div className="absolute right-0 mt-1 w-56 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 shadow dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}

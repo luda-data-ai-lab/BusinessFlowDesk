@@ -21,6 +21,13 @@ const STRINGS = {
   role: { ko: '직군', en: 'Role' },
   export: { ko: '내보내기', en: 'Export' },
   exportPng: { ko: 'PNG 이미지', en: 'PNG image' },
+  shareLink: { ko: '공유 링크 복사', en: 'Copy share link' },
+  shareCopied: { ko: '공유 링크를 복사했어요', en: 'Share link copied' },
+  sharedNotice: {
+    ko: '공유 링크에서 플로우를 불러왔어요. 내 플로우에 복사본이 저장됩니다.',
+    en: 'Loaded a flow from a share link. A copy is saved to My flows.',
+  },
+  sharedInvalid: { ko: '공유 링크를 읽을 수 없어요', en: 'Could not read the share link' },
   exportSvg: { ko: 'SVG 벡터', en: 'SVG vector' },
   exportJson: { ko: 'JSON 백업', en: 'JSON backup' },
   importJson: { ko: 'JSON 불러오기', en: 'Import JSON' },
