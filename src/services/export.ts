@@ -74,6 +74,12 @@ export async function exportFlowAsSvg(bounds: Rect, title: string) {
   saveAs(blob, `${fileStem(title)}.svg`);
 }
 
+export function exportFlowAsText(text: string, title: string, ext: 'mmd' | 'md') {
+  const type = ext === 'md' ? 'text/markdown' : 'text/plain';
+  const blob = new Blob([text], { type: `${type};charset=utf-8` });
+  saveAs(blob, `${fileStem(title)}.${ext}`);
+}
+
 export function exportFlowAsJson(project: FlowProject) {
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
   saveAs(blob, `${fileStem(project.title)}.json`);

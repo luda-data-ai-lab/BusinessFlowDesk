@@ -4,8 +4,11 @@ import {
   exportFlowAsJson,
   exportFlowAsPng,
   exportFlowAsSvg,
+  exportFlowAsText,
   readProjectFile,
 } from '../services/export';
+import { toMarkdown, toMermaid } from '../services/textExport';
+import { useI18n } from '../i18n';
 import { flowBounds } from '../utils/swimlanes';
 
 export function useExport() {
@@ -36,6 +39,16 @@ export function useExport() {
     exportPng: () => run(() => exportFlowAsPng(bounds(), title())),
     exportSvg: () => run(() => exportFlowAsSvg(bounds(), title())),
     exportJson: () => run(() => exportFlowAsJson(useFlowStore.getState().toProject())),
+    exportMermaid: () =>
+      run(() => {
+        const project = useFlowStore.getState().toProject();
+        exportFlowAsText(toMermaid(project, useI18n.getState().language), title(), 'mmd');
+      }),
+    exportMarkdown: () =>
+      run(() => {
+        const project = useFlowStore.getState().toProject();
+        exportFlowAsText(toMarkdown(project, useI18n.getState().language), title(), 'md');
+      }),
     importJson: (file: File) =>
       run(async () => {
         const project = await readProjectFile(file);

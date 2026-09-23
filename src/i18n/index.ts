@@ -23,6 +23,8 @@ const STRINGS = {
   exportPng: { ko: 'PNG 이미지', en: 'PNG image' },
   exportSvg: { ko: 'SVG 벡터', en: 'SVG vector' },
   exportJson: { ko: 'JSON 백업', en: 'JSON backup' },
+  exportMermaid: { ko: 'Mermaid (.mmd)', en: 'Mermaid (.mmd)' },
+  exportMarkdown: { ko: 'Markdown 문서', en: 'Markdown document' },
   importJson: { ko: 'JSON 불러오기', en: 'Import JSON' },
   palette: { ko: '노드 팔레트', en: 'Node palette' },
   paletteHint: {
