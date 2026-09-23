@@ -1,4 +1,4 @@
-import { getNodesBounds, type Node } from '@xyflow/react';
+import type { Rect } from '@xyflow/react';
 import { toPng, toSvg } from 'html-to-image';
 import { saveAs } from 'file-saver';
 import type { FlowProject } from '../types/flow';
@@ -22,8 +22,7 @@ function getViewportElement(): HTMLElement {
   return el;
 }
 
-function computeFrame(nodes: Node[]) {
-  const bounds = getNodesBounds(nodes);
+function computeFrame(bounds: Rect) {
   const rawWidth = bounds.width + PADDING * 2;
   const rawHeight = bounds.height + PADDING * 2;
   const zoom = Math.min(1, MAX_DIMENSION / rawWidth, MAX_DIMENSION / rawHeight);
@@ -41,9 +40,9 @@ function isDarkMode() {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
-export async function exportFlowAsPng(nodes: Node[], title: string) {
-  if (nodes.length === 0) throw new Error('Nothing to export');
-  const { width, height, viewport } = computeFrame(nodes);
+export async function exportFlowAsPng(bounds: Rect, title: string) {
+  if (bounds.width <= 0 || bounds.height <= 0) throw new Error('Nothing to export');
+  const { width, height, viewport } = computeFrame(bounds);
   const dataUrl = await toPng(getViewportElement(), {
     backgroundColor: isDarkMode() ? '#0F172A' : '#F8FAFC',
     width,
@@ -58,9 +57,9 @@ export async function exportFlowAsPng(nodes: Node[], title: string) {
   saveAs(dataUrl, `${fileStem(title)}.png`);
 }
 
-export async function exportFlowAsSvg(nodes: Node[], title: string) {
-  if (nodes.length === 0) throw new Error('Nothing to export');
-  const { width, height, viewport } = computeFrame(nodes);
+export async function exportFlowAsSvg(bounds: Rect, title: string) {
+  if (bounds.width <= 0 || bounds.height <= 0) throw new Error('Nothing to export');
+  const { width, height, viewport } = computeFrame(bounds);
   const dataUrl = await toSvg(getViewportElement(), {
     backgroundColor: isDarkMode() ? '#0F172A' : '#F8FAFC',
     width,

@@ -43,6 +43,7 @@ export interface FlowProject {
   nodes: FlowNode[];
   edges: FlowEdge[];
   layoutDirection: LayoutDirection;
+  swimlanes?: boolean;
   createdAt: string;
   updatedAt: string;
   version: number;

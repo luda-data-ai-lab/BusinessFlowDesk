@@ -1,20 +1,25 @@
 import dagre from '@dagrejs/dagre';
 import type { FlowEdge, FlowNode, LayoutDirection } from '../types/flow';
 import { nodeSize } from '../constants/nodeTypes';
+import { laneKey, sizeOf } from './swimlanes';
 
 export const NODE_SEP = 80;
 export const RANK_SEP = 100;
+const LANE_GAP = 120;
+const LANE_NODE_GAP = 32;
 
 interface LayoutOptions {
   direction?: LayoutDirection;
   /** When true, nodes with `data.pinned` keep their current position. */
   respectPinned?: boolean;
+  /** Group nodes into department lanes along the cross axis. */
+  swimlanes?: boolean;
 }
 
 export function layoutFlow(
   nodes: FlowNode[],
   edges: FlowEdge[],
-  { direction = 'TB', respectPinned = true }: LayoutOptions = {},
+  { direction = 'TB', respectPinned = true, swimlanes = false }: LayoutOptions = {},
 ): FlowNode[] {
   if (nodes.length === 0) return nodes;
 
@@ -42,7 +47,7 @@ export function layoutFlow(
 
   dagre.layout(g);
 
-  return nodes.map((node) => {
+  const laidOut = nodes.map((node) => {
     if (respectPinned && node.data.pinned) return node;
     const pos = g.node(node.id);
     if (!pos) return node;
@@ -55,4 +60,60 @@ export function layoutFlow(
       position: { x: pos.x - size.width / 2, y: pos.y - size.height / 2 },
     };
   });
+
+  return swimlanes ? applySwimlanes(laidOut, direction, respectPinned) : laidOut;
+}
+
+/**
+ * Re-distribute dagre output along the cross axis so every department occupies its own lane.
+ * Lane order follows the average cross-axis position dagre chose, keeping edges short.
+ */
+function applySwimlanes(
+  nodes: FlowNode[],
+  direction: LayoutDirection,
+  respectPinned: boolean,
+): FlowNode[] {
+  const isTB = direction === 'TB';
+  const cross = (n: FlowNode) => (isTB ? n.position.x : n.position.y);
+  const crossSize = (n: FlowNode) => (isTB ? sizeOf(n).width : sizeOf(n).height);
+  const mainSize = (n: FlowNode) => (isTB ? sizeOf(n).height : sizeOf(n).width);
+
+  const lanes = new Map<string, { nodes: FlowNode[]; sum: number; maxCross: number }>();
+  for (const n of nodes) {
+    const key = laneKey(n);
+    const lane = lanes.get(key) ?? { nodes: [], sum: 0, maxCross: 0 };
+    lane.nodes.push(n);
+    lane.sum += cross(n) + crossSize(n) / 2;
+    lane.maxCross = Math.max(lane.maxCross, crossSize(n));
+    lanes.set(key, lane);
+  }
+  const ordered = [...lanes.values()].sort(
+    (a, b) => a.sum / a.nodes.length - b.sum / b.nodes.length,
+  );
+
+  const placed = new Map<string, FlowNode>();
+  let laneStart = 40;
+  for (const lane of ordered) {
+    const laneWidth = lane.maxCross + LANE_GAP;
+    const sorted = [...lane.nodes].sort((a, b) =>
+      isTB ? a.position.y - b.position.y : a.position.x - b.position.x,
+    );
+    let cursor = -Infinity;
+    for (const n of sorted) {
+      if (respectPinned && n.data.pinned) {
+        placed.set(n.id, n);
+        continue;
+      }
+      const centered = laneStart + (laneWidth - crossSize(n)) / 2;
+      let main = isTB ? n.position.y : n.position.x;
+      if (main < cursor) main = cursor;
+      cursor = main + mainSize(n) + LANE_NODE_GAP;
+      placed.set(n.id, {
+        ...n,
+        position: isTB ? { x: centered, y: main } : { x: main, y: centered },
+      });
+    }
+    laneStart += laneWidth;
+  }
+  return nodes.map((n) => placed.get(n.id) ?? n);
 }

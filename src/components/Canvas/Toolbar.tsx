@@ -2,6 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 import { useFlowStore } from '../../hooks/useFlowStore';
 import { useT } from '../../i18n';
 import { Tooltip } from '../common/Tooltip';
+import { useFitFlow } from '../../hooks/useFitFlow';
 
 interface ToolButtonProps {
   label: string;
@@ -31,7 +32,8 @@ function ToolButton({ label, onClick, disabled, children, active }: ToolButtonPr
 
 export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const t = useT();
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { zoomIn, zoomOut } = useReactFlow();
+  const fitFlow = useFitFlow();
   const undo = useFlowStore((s) => s.undo);
   const redo = useFlowStore((s) => s.redo);
   const canUndo = useFlowStore((s) => s.historyIndex >= 0);
@@ -39,6 +41,8 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const autoLayout = useFlowStore((s) => s.autoLayout);
   const toggleDirection = useFlowStore((s) => s.toggleDirection);
   const direction = useFlowStore((s) => s.layoutDirection);
+  const swimlanes = useFlowStore((s) => s.swimlanes);
+  const toggleSwimlanes = useFlowStore((s) => s.toggleSwimlanes);
   const nodeCount = useFlowStore((s) => s.nodes.length);
   const edgeCount = useFlowStore((s) => s.edges.length);
 
@@ -67,6 +71,14 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
           >
             <span className="text-xs font-semibold">{direction === 'TB' ? '↓' : '→'}</span>
           </ToolButton>
+          <ToolButton
+            label={t('swimlanes')}
+            onClick={toggleSwimlanes}
+            active={swimlanes}
+            disabled={nodeCount === 0}
+          >
+            <span className="text-xs font-semibold">{direction === 'TB' ? '▥' : '▤'}</span>
+          </ToolButton>
           <span className="mx-1 h-5 w-px bg-border dark:bg-slate-600" />
         </>
       )}
@@ -76,7 +88,7 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
       <ToolButton label="Zoom out" onClick={() => zoomOut()}>
         −
       </ToolButton>
-      <ToolButton label={t('fitView')} onClick={() => fitView({ padding: 0.2, duration: 300 })}>
+      <ToolButton label={t('fitView')} onClick={() => fitFlow()}>
         ⛶
       </ToolButton>
       <span className="ml-2 mr-1 hidden text-[11px] text-slate-400 sm:inline">

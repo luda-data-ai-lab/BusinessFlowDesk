@@ -18,6 +18,8 @@ import { nodeTypes } from './CustomNodes';
 import { ConditionalEdge } from './CustomEdges/ConditionalEdge';
 import { Toolbar } from './Toolbar';
 import { MiniMap } from './MiniMap';
+import { SwimlaneLayer } from './SwimlaneLayer';
+import { useFitFlow } from '../../hooks/useFitFlow';
 
 const edgeTypes: EdgeTypes = { conditional: ConditionalEdge };
 
@@ -39,14 +41,14 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
   const selectEdge = useFlowStore((s) => s.selectEdge);
   const isGenerating = useFlowStore((s) => s.isGenerating);
   const fitViewToken = useFlowStore((s) => s.fitViewToken);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
+  const fitFlow = useFitFlow();
   const wrapper = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (fitViewToken === 0) return;
-    const id = window.setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+    const id = window.setTimeout(() => fitFlow(fitViewToken === 0 ? 0 : 400), 50);
     return () => window.clearTimeout(id);
-  }, [fitViewToken, fitView]);
+  }, [fitViewToken, fitFlow]);
 
   const onDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
@@ -112,6 +114,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
           className="!bg-surface dark:!bg-slate-900"
           color="#CBD5E1"
         />
+        <SwimlaneLayer />
         <Panel position="top-center" className="!m-3">
           <Toolbar readOnly={readOnly} />
         </Panel>

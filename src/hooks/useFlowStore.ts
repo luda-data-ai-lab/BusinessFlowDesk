@@ -23,6 +23,7 @@ import type { Language } from '../i18n';
 import { DEFAULT_ROLE } from '../constants/roles';
 import { NODE_TYPE_MAP } from '../constants/nodeTypes';
 import { layoutFlow } from '../utils/layoutEngine';
+import { computeLanes, laneAtPosition, sizeOf } from '../utils/swimlanes';
 import { newId, parseAIFlow, toAIFlow } from '../utils/flowParser';
 import { generateFlow } from '../services/ai/generateFlow';
 import { modifyFlow } from '../services/ai/modifyFlow';
@@ -41,6 +42,7 @@ const HISTORY_LIMIT = 100;
 interface Snapshot {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  swimlanes: boolean;
 }
 
 export interface FlowState {
@@ -51,6 +53,7 @@ export interface FlowState {
   edges: FlowEdge[];
   currentRole: RoleType;
   layoutDirection: LayoutDirection;
+  swimlanes: boolean;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   isGenerating: boolean;
@@ -85,6 +88,7 @@ export interface FlowState {
   cancelGeneration: () => void;
   autoLayout: (direction?: LayoutDirection) => void;
   toggleDirection: () => void;
+  toggleSwimlanes: () => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -110,7 +114,14 @@ function blankProject(
   role: RoleType,
 ): Pick<
   FlowState,
-  'projectId' | 'projectTitle' | 'createdAt' | 'nodes' | 'edges' | 'layoutDirection' | 'currentRole'
+  | 'projectId'
+  | 'projectTitle'
+  | 'createdAt'
+  | 'nodes'
+  | 'edges'
+  | 'layoutDirection'
+  | 'swimlanes'
+  | 'currentRole'
 > {
   return {
     projectId: newId('flow'),
@@ -119,6 +130,7 @@ function blankProject(
     nodes: [],
     edges: [],
     layoutDirection: 'TB',
+    swimlanes: false,
     currentRole: role,
   };
 }
@@ -135,6 +147,7 @@ function initialState() {
         nodes: last.nodes ?? [],
         edges: last.edges ?? [],
         layoutDirection: last.layoutDirection ?? 'TB',
+        swimlanes: last.swimlanes ?? false,
         currentRole: role,
       }
     : blankProject(role);
@@ -143,9 +156,9 @@ function initialState() {
 
 export const useFlowStore = create<FlowState>((set, get) => {
   const pushHistory = () => {
-    const { nodes, edges, history, historyIndex } = get();
+    const { nodes, edges, swimlanes, history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
-    trimmed.push({ nodes, edges });
+    trimmed.push({ nodes, edges, swimlanes });
     const overflow = Math.max(0, trimmed.length - HISTORY_LIMIT);
     set({ history: trimmed.slice(overflow), historyIndex: trimmed.length - 1 - overflow });
   };
@@ -154,6 +167,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     set({
       nodes: snap.nodes,
       edges: snap.edges,
+      swimlanes: snap.swimlanes,
       historyIndex: index,
       selectedNodeId: null,
       selectedEdgeId: null,
@@ -165,10 +179,11 @@ export const useFlowStore = create<FlowState>((set, get) => {
     mock: boolean,
     keepExisting: boolean,
   ) => {
-    const { layoutDirection, projectTitle } = get();
+    const { layoutDirection, swimlanes, projectTitle } = get();
     const laidOut = layoutFlow(flow.nodes, flow.edges, {
       direction: layoutDirection,
-      respectPinned: keepExisting,
+      respectPinned: keepExisting && !swimlanes,
+      swimlanes,
     });
     pushHistory();
     set({
@@ -215,9 +230,29 @@ export const useFlowStore = create<FlowState>((set, get) => {
       if (dragEnd) {
         const moved = new Set<string>();
         for (const c of changes) if (c.type === 'position' && c.dragging === false) moved.add(c.id);
-        nodes = nodes.map((n) =>
-          moved.has(n.id) && !n.data.pinned ? { ...n, data: { ...n.data, pinned: true } } : n,
-        );
+        const { swimlanes, layoutDirection } = get();
+        const lanes = swimlanes
+          ? computeLanes(
+              nodes.filter((n) => !moved.has(n.id)),
+              layoutDirection,
+            )
+          : [];
+        nodes = nodes.map((n) => {
+          if (!moved.has(n.id)) return n;
+          let data = n.data.pinned ? n.data : { ...n.data, pinned: true };
+          if (lanes.length > 0) {
+            const { width, height } = sizeOf(n);
+            const lane = laneAtPosition(
+              lanes,
+              { x: n.position.x + width / 2, y: n.position.y + height / 2 },
+              layoutDirection,
+            );
+            if (lane && lane.department !== (data.department?.trim() ?? '')) {
+              data = { ...data, department: lane.department || undefined };
+            }
+          }
+          return data === n.data ? n : { ...n, data };
+        });
       }
       let selectedNodeId: string | null | undefined;
       for (const c of changes) {
@@ -398,17 +433,38 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     autoLayout: (direction) => {
-      const { nodes, edges, layoutDirection } = get();
+      const { nodes, edges, layoutDirection, swimlanes } = get();
       if (nodes.length === 0) return;
       pushHistory();
       const dir = direction ?? layoutDirection;
       const directionChanged = dir !== layoutDirection;
-      const input = directionChanged
-        ? nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }))
-        : nodes;
+      const respectPinned = !directionChanged && !swimlanes;
+      const input = respectPinned
+        ? nodes
+        : nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
       set({
-        nodes: layoutFlow(input, edges, { direction: dir, respectPinned: !directionChanged }),
+        nodes: layoutFlow(input, edges, { direction: dir, respectPinned, swimlanes }),
         layoutDirection: dir,
+        fitViewToken: get().fitViewToken + 1,
+      });
+    },
+
+    toggleSwimlanes: () => {
+      const { nodes, edges, layoutDirection, swimlanes } = get();
+      const next = !swimlanes;
+      if (nodes.length === 0) {
+        set({ swimlanes: next });
+        return;
+      }
+      pushHistory();
+      const unpinned = nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
+      set({
+        swimlanes: next,
+        nodes: layoutFlow(unpinned, edges, {
+          direction: layoutDirection,
+          respectPinned: false,
+          swimlanes: next,
+        }),
         fitViewToken: get().fitViewToken + 1,
       });
     },
@@ -419,11 +475,11 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     undo: () => {
-      const { history, historyIndex, nodes, edges } = get();
+      const { history, historyIndex, nodes, edges, swimlanes } = get();
       if (historyIndex < 0) return;
       // When at the tip, stash the current state so redo can return to it.
       if (historyIndex === history.length - 1) {
-        const withCurrent = [...history, { nodes, edges }];
+        const withCurrent = [...history, { nodes, edges, swimlanes }];
         set({ history: withCurrent });
       }
       applySnapshot(history[historyIndex], historyIndex - 1);
@@ -462,6 +518,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
         nodes: project.nodes,
         edges: project.edges,
         layoutDirection: project.layoutDirection ?? 'TB',
+        swimlanes: project.swimlanes ?? false,
         currentRole: project.role,
         selectedNodeId: null,
         selectedEdgeId: null,
@@ -497,8 +554,16 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     toProject: () => {
-      const { projectId, projectTitle, currentRole, nodes, edges, layoutDirection, createdAt } =
-        get();
+      const {
+        projectId,
+        projectTitle,
+        currentRole,
+        nodes,
+        edges,
+        layoutDirection,
+        swimlanes,
+        createdAt,
+      } = get();
       return {
         id: projectId,
         title: projectTitle,
@@ -506,6 +571,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
         nodes,
         edges,
         layoutDirection,
+        swimlanes,
         createdAt,
         updatedAt: nowIso(),
         version: 1,
@@ -526,7 +592,8 @@ useFlowStore.subscribe((state, prev) => {
     state.edges === prev.edges &&
     state.projectTitle === prev.projectTitle &&
     state.currentRole === prev.currentRole &&
-    state.layoutDirection === prev.layoutDirection
+    state.layoutDirection === prev.layoutDirection &&
+    state.swimlanes === prev.swimlanes
   ) {
     return;
   }
