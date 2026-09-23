@@ -24,6 +24,21 @@ const STRINGS = {
   exportSvg: { ko: 'SVG 벡터', en: 'SVG vector' },
   exportJson: { ko: 'JSON 백업', en: 'JSON backup' },
   importJson: { ko: 'JSON 불러오기', en: 'Import JSON' },
+  templates: { ko: '템플릿 갤러리', en: 'Template gallery' },
+  templatesHint: {
+    ko: '자주 쓰는 업무 플로우를 골라 바로 시작하고, 프롬프트로 수정하세요.',
+    en: 'Start from a common business flow, then refine it with prompts.',
+  },
+  templateSearch: { ko: '템플릿 검색…', en: 'Search templates…' },
+  templateOnlyMyRole: { ko: '내 직군만', en: 'My role only' },
+  templateRecommended: { ko: '추천', en: 'Recommended' },
+  templateNoResults: { ko: '일치하는 템플릿이 없어요', en: 'No matching templates' },
+  templateReplaceConfirm: {
+    ko: '템플릿을 새 플로우로 열겠습니다. 현재 플로우는 내 플로우에 저장된 상태로 유지됩니다. 계속할까요?',
+    en: 'The template opens as a new flow. Your current flow stays saved in My flows. Continue?',
+  },
+  nodesCount: { ko: '노드', en: 'nodes' },
+  emptyOrTemplate: { ko: '또는 템플릿에서 시작', en: 'or start from a template' },
   palette: { ko: '노드 팔레트', en: 'Node palette' },
   paletteHint: {
     ko: '캔버스로 드래그하거나 클릭해서 추가',
