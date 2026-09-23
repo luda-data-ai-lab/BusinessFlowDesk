@@ -93,8 +93,6 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2.5}
         selectionMode={SelectionMode.Partial}
