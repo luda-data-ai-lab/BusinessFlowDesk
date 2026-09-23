@@ -52,6 +52,8 @@ const STRINGS = {
   autoLayout: { ko: '자동 정렬', en: 'Auto layout' },
   direction: { ko: '방향 전환', en: 'Toggle direction' },
   fitView: { ko: '화면 맞춤', en: 'Fit view' },
+  swimlanes: { ko: '스윔레인 (부서별 레인)', en: 'Swimlanes (by department)' },
+  unassignedLane: { ko: '미지정', en: 'Unassigned' },
   projects: { ko: '내 플로우', en: 'My flows' },
   deleteProject: { ko: '이 플로우 삭제', en: 'Delete this flow' },
   confirmDeleteProject: { ko: '이 플로우를 삭제할까요?', en: 'Delete this flow?' },

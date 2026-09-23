@@ -39,6 +39,8 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const autoLayout = useFlowStore((s) => s.autoLayout);
   const toggleDirection = useFlowStore((s) => s.toggleDirection);
   const direction = useFlowStore((s) => s.layoutDirection);
+  const swimlanes = useFlowStore((s) => s.swimlanes);
+  const toggleSwimlanes = useFlowStore((s) => s.toggleSwimlanes);
   const nodeCount = useFlowStore((s) => s.nodes.length);
   const edgeCount = useFlowStore((s) => s.edges.length);
 
@@ -66,6 +68,14 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
             disabled={nodeCount === 0}
           >
             <span className="text-xs font-semibold">{direction === 'TB' ? '↓' : '→'}</span>
+          </ToolButton>
+          <ToolButton
+            label={t('swimlanes')}
+            onClick={toggleSwimlanes}
+            active={swimlanes}
+            disabled={nodeCount === 0}
+          >
+            <span className="text-xs font-semibold">{direction === 'TB' ? '▥' : '▤'}</span>
           </ToolButton>
           <span className="mx-1 h-5 w-px bg-border dark:bg-slate-600" />
         </>

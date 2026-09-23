@@ -18,6 +18,7 @@ import { nodeTypes } from './CustomNodes';
 import { ConditionalEdge } from './CustomEdges/ConditionalEdge';
 import { Toolbar } from './Toolbar';
 import { MiniMap } from './MiniMap';
+import { SwimlaneLayer } from './SwimlaneLayer';
 
 const edgeTypes: EdgeTypes = { conditional: ConditionalEdge };
 
@@ -112,6 +113,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
           className="!bg-surface dark:!bg-slate-900"
           color="#CBD5E1"
         />
+        <SwimlaneLayer />
         <Panel position="top-center" className="!m-3">
           <Toolbar readOnly={readOnly} />
         </Panel>
