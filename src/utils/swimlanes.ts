@@ -1,8 +1,9 @@
+import { getNodesBounds, type Rect } from '@xyflow/react';
 import type { FlowNode, LayoutDirection } from '../types/flow';
 import { nodeSize } from '../constants/nodeTypes';
 
 export const LANE_PADDING = 40;
-export const LANE_HEADER = 40;
+export const LANE_HEADER = 44;
 export const UNASSIGNED_LANE = '';
 
 export interface Lane {
@@ -100,6 +101,27 @@ export function computeLanes(nodes: FlowNode[], direction: LayoutDirection): Lan
       ? { department, x: cross, y: mainStart, width: crossLen, height: mainLength }
       : { department, x: mainStart, y: cross, width: mainLength, height: crossLen };
   });
+}
+
+/** Bounding box of nodes plus (when enabled) their swimlanes, for fit-view and export framing. */
+export function flowBounds(
+  nodes: FlowNode[],
+  swimlanes: boolean,
+  direction: LayoutDirection,
+): Rect {
+  const base = getNodesBounds(nodes);
+  if (!swimlanes) return base;
+  let x0 = base.x;
+  let y0 = base.y;
+  let x1 = base.x + base.width;
+  let y1 = base.y + base.height;
+  for (const l of computeLanes(nodes, direction)) {
+    x0 = Math.min(x0, l.x);
+    y0 = Math.min(y0, l.y);
+    x1 = Math.max(x1, l.x + l.width);
+    y1 = Math.max(y1, l.y + l.height);
+  }
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 
 export function laneAtPosition(

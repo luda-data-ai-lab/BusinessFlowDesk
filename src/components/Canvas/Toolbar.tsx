@@ -2,6 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 import { useFlowStore } from '../../hooks/useFlowStore';
 import { useT } from '../../i18n';
 import { Tooltip } from '../common/Tooltip';
+import { useFitFlow } from '../../hooks/useFitFlow';
 
 interface ToolButtonProps {
   label: string;
@@ -31,7 +32,8 @@ function ToolButton({ label, onClick, disabled, children, active }: ToolButtonPr
 
 export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const t = useT();
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { zoomIn, zoomOut } = useReactFlow();
+  const fitFlow = useFitFlow();
   const undo = useFlowStore((s) => s.undo);
   const redo = useFlowStore((s) => s.redo);
   const canUndo = useFlowStore((s) => s.historyIndex >= 0);
@@ -86,7 +88,7 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
       <ToolButton label="Zoom out" onClick={() => zoomOut()}>
         −
       </ToolButton>
-      <ToolButton label={t('fitView')} onClick={() => fitView({ padding: 0.2, duration: 300 })}>
+      <ToolButton label={t('fitView')} onClick={() => fitFlow()}>
         ⛶
       </ToolButton>
       <span className="ml-2 mr-1 hidden text-[11px] text-slate-400 sm:inline">

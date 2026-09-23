@@ -6,6 +6,7 @@ import {
   exportFlowAsSvg,
   readProjectFile,
 } from '../services/export';
+import { flowBounds } from '../utils/swimlanes';
 
 export function useExport() {
   const [busy, setBusy] = useState(false);
@@ -24,12 +25,16 @@ export function useExport() {
   }, []);
 
   const title = () => useFlowStore.getState().projectTitle || 'flow';
+  const bounds = () => {
+    const { nodes, swimlanes, layoutDirection } = useFlowStore.getState();
+    return flowBounds(nodes, swimlanes, layoutDirection);
+  };
 
   return {
     busy,
     error,
-    exportPng: () => run(() => exportFlowAsPng(useFlowStore.getState().nodes, title())),
-    exportSvg: () => run(() => exportFlowAsSvg(useFlowStore.getState().nodes, title())),
+    exportPng: () => run(() => exportFlowAsPng(bounds(), title())),
+    exportSvg: () => run(() => exportFlowAsSvg(bounds(), title())),
     exportJson: () => run(() => exportFlowAsJson(useFlowStore.getState().toProject())),
     importJson: (file: File) =>
       run(async () => {

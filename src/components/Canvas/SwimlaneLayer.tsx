@@ -41,7 +41,7 @@ export function SwimlaneLayer() {
             }}
           >
             <div
-              className="absolute flex items-center overflow-hidden text-ellipsis whitespace-nowrap px-3 text-sm font-semibold tracking-wide"
+              className="absolute flex items-center overflow-hidden text-ellipsis whitespace-nowrap px-3 text-base font-semibold tracking-wide"
               style={{
                 color,
                 background: `${color}1A`,

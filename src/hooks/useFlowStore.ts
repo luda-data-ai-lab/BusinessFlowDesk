@@ -42,6 +42,7 @@ const HISTORY_LIMIT = 100;
 interface Snapshot {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  swimlanes: boolean;
 }
 
 export interface FlowState {
@@ -155,9 +156,9 @@ function initialState() {
 
 export const useFlowStore = create<FlowState>((set, get) => {
   const pushHistory = () => {
-    const { nodes, edges, history, historyIndex } = get();
+    const { nodes, edges, swimlanes, history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
-    trimmed.push({ nodes, edges });
+    trimmed.push({ nodes, edges, swimlanes });
     const overflow = Math.max(0, trimmed.length - HISTORY_LIMIT);
     set({ history: trimmed.slice(overflow), historyIndex: trimmed.length - 1 - overflow });
   };
@@ -166,6 +167,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     set({
       nodes: snap.nodes,
       edges: snap.edges,
+      swimlanes: snap.swimlanes,
       historyIndex: index,
       selectedNodeId: null,
       selectedEdgeId: null,
@@ -180,7 +182,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     const { layoutDirection, swimlanes, projectTitle } = get();
     const laidOut = layoutFlow(flow.nodes, flow.edges, {
       direction: layoutDirection,
-      respectPinned: keepExisting,
+      respectPinned: keepExisting && !swimlanes,
       swimlanes,
     });
     pushHistory();
@@ -436,15 +438,12 @@ export const useFlowStore = create<FlowState>((set, get) => {
       pushHistory();
       const dir = direction ?? layoutDirection;
       const directionChanged = dir !== layoutDirection;
-      const input = directionChanged
-        ? nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }))
-        : nodes;
+      const respectPinned = !directionChanged && !swimlanes;
+      const input = respectPinned
+        ? nodes
+        : nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
       set({
-        nodes: layoutFlow(input, edges, {
-          direction: dir,
-          respectPinned: !directionChanged,
-          swimlanes,
-        }),
+        nodes: layoutFlow(input, edges, { direction: dir, respectPinned, swimlanes }),
         layoutDirection: dir,
         fitViewToken: get().fitViewToken + 1,
       });
@@ -476,11 +475,11 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     undo: () => {
-      const { history, historyIndex, nodes, edges } = get();
+      const { history, historyIndex, nodes, edges, swimlanes } = get();
       if (historyIndex < 0) return;
       // When at the tip, stash the current state so redo can return to it.
       if (historyIndex === history.length - 1) {
-        const withCurrent = [...history, { nodes, edges }];
+        const withCurrent = [...history, { nodes, edges, swimlanes }];
         set({ history: withCurrent });
       }
       applySnapshot(history[historyIndex], historyIndex - 1);
