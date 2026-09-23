@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Pretendard', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* React Flow theming */
+.bfd-canvas .react-flow__node {
+  font-family: inherit;
+}
+.bfd-canvas .react-flow__node.selected {
+  z-index: 10 !important;
+}
+.bfd-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 2.5;
+}
+.bfd-canvas .react-flow__controls,
+.bfd-canvas .react-flow__attribution {
+  display: none;
+}
+.bfd-canvas .react-flow__handle {
+  z-index: 20;
+}
+.bfd-canvas .react-flow__edge-path {
+  transition: stroke 120ms ease;
+}
+.bfd-canvas .react-flow__connectionline {
+  stroke: #7c3aed;
+  stroke-width: 2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bfd-canvas .react-flow__background {
+    background: #0f172a;
+  }
+  .bfd-canvas .react-flow__minimap-mask {
+    fill: rgba(15, 23, 42, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

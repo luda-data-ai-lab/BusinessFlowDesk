@@ -1,0 +1,539 @@
+import { create } from 'zustand';
+import {
+  addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
+  MarkerType,
+  type Connection,
+  type EdgeChange,
+  type NodeChange,
+  type XYPosition,
+} from '@xyflow/react';
+import type {
+  FlowEdge,
+  FlowEdgeData,
+  FlowNode,
+  FlowNodeData,
+  FlowProject,
+  LayoutDirection,
+  NodeType,
+} from '../types/flow';
+import type { RoleType } from '../types/role';
+import type { Language } from '../i18n';
+import { DEFAULT_ROLE } from '../constants/roles';
+import { NODE_TYPE_MAP } from '../constants/nodeTypes';
+import { layoutFlow } from '../utils/layoutEngine';
+import { newId, parseAIFlow, toAIFlow } from '../utils/flowParser';
+import { generateFlow } from '../services/ai/generateFlow';
+import { modifyFlow } from '../services/ai/modifyFlow';
+import {
+  isOnboarded,
+  loadLastProject,
+  loadProjects,
+  loadRole,
+  removeProject,
+  saveRole,
+  upsertProject,
+} from '../services/storage';
+
+const HISTORY_LIMIT = 100;
+
+interface Snapshot {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export interface FlowState {
+  projectId: string;
+  projectTitle: string;
+  createdAt: string;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  currentRole: RoleType;
+  layoutDirection: LayoutDirection;
+  selectedNodeId: string | null;
+  selectedEdgeId: string | null;
+  isGenerating: boolean;
+  error: string | null;
+  notice: string | null;
+  lastGenerationWasMock: boolean;
+  needsOnboarding: boolean;
+  projects: FlowProject[];
+  history: Snapshot[];
+  historyIndex: number;
+  /** Increments whenever a fresh generation/import/load happens so the canvas re-fits. */
+  fitViewToken: number;
+
+  setNodes: (nodes: FlowNode[]) => void;
+  setEdges: (edges: FlowEdge[]) => void;
+  onNodesChange: (changes: NodeChange<FlowNode>[]) => void;
+  onEdgesChange: (changes: EdgeChange<FlowEdge>[]) => void;
+  onConnect: (connection: Connection) => void;
+  setRole: (role: RoleType) => void;
+  completeOnboarding: (role: RoleType) => void;
+  setProjectTitle: (title: string) => void;
+  selectNode: (id: string | null) => void;
+  selectEdge: (id: string | null) => void;
+  addNode: (type: NodeType, position: XYPosition) => string;
+  deleteNode: (id: string) => void;
+  deleteEdge: (id: string) => void;
+  updateNodeData: (id: string, data: Partial<FlowNodeData>) => void;
+  changeNodeType: (id: string, type: NodeType) => void;
+  updateEdge: (id: string, patch: { label?: string; style?: FlowEdgeData['style'] }) => void;
+  generateFromPrompt: (prompt: string, language: Language) => Promise<void>;
+  modifyWithPrompt: (prompt: string, language: Language) => Promise<void>;
+  cancelGeneration: () => void;
+  autoLayout: (direction?: LayoutDirection) => void;
+  toggleDirection: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  newProject: () => void;
+  loadProject: (id: string) => void;
+  deleteProject: (id: string) => void;
+  importProject: (project: FlowProject) => void;
+  toProject: () => FlowProject;
+  refreshProjects: () => void;
+  clearError: () => void;
+  clearNotice: () => void;
+}
+
+let abortController: AbortController | null = null;
+let dragSnapshotTaken = false;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function blankProject(
+  role: RoleType,
+): Pick<
+  FlowState,
+  'projectId' | 'projectTitle' | 'createdAt' | 'nodes' | 'edges' | 'layoutDirection' | 'currentRole'
+> {
+  return {
+    projectId: newId('flow'),
+    projectTitle: '',
+    createdAt: nowIso(),
+    nodes: [],
+    edges: [],
+    layoutDirection: 'TB',
+    currentRole: role,
+  };
+}
+
+function initialState() {
+  const savedRole = loadRole();
+  const last = loadLastProject();
+  const role = last?.role ?? savedRole ?? DEFAULT_ROLE;
+  const base = last
+    ? {
+        projectId: last.id,
+        projectTitle: last.title,
+        createdAt: last.createdAt,
+        nodes: last.nodes ?? [],
+        edges: last.edges ?? [],
+        layoutDirection: last.layoutDirection ?? 'TB',
+        currentRole: role,
+      }
+    : blankProject(role);
+  return { ...base, projects: loadProjects(), needsOnboarding: !isOnboarded() && !savedRole };
+}
+
+export const useFlowStore = create<FlowState>((set, get) => {
+  const pushHistory = () => {
+    const { nodes, edges, history, historyIndex } = get();
+    const trimmed = history.slice(0, historyIndex + 1);
+    trimmed.push({ nodes, edges });
+    const overflow = Math.max(0, trimmed.length - HISTORY_LIMIT);
+    set({ history: trimmed.slice(overflow), historyIndex: trimmed.length - 1 - overflow });
+  };
+
+  const applySnapshot = (snap: Snapshot, index: number) => {
+    set({
+      nodes: snap.nodes,
+      edges: snap.edges,
+      historyIndex: index,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+    });
+  };
+
+  const applyGenerated = (
+    flow: ReturnType<typeof parseAIFlow>,
+    mock: boolean,
+    keepExisting: boolean,
+  ) => {
+    const { layoutDirection, projectTitle } = get();
+    const laidOut = layoutFlow(flow.nodes, flow.edges, {
+      direction: layoutDirection,
+      respectPinned: keepExisting,
+    });
+    pushHistory();
+    set({
+      nodes: laidOut,
+      edges: flow.edges,
+      projectTitle: projectTitle || flow.title || '',
+      isGenerating: false,
+      lastGenerationWasMock: mock,
+      notice: mock ? 'mock' : null,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      fitViewToken: get().fitViewToken + 1,
+    });
+  };
+
+  return {
+    ...initialState(),
+    selectedNodeId: null,
+    selectedEdgeId: null,
+    isGenerating: false,
+    error: null,
+    notice: null,
+    lastGenerationWasMock: false,
+    history: [],
+    historyIndex: -1,
+    fitViewToken: 0,
+
+    setNodes: (nodes) => set({ nodes }),
+    setEdges: (edges) => set({ edges }),
+
+    onNodesChange: (changes) => {
+      const removing = changes.some((c) => c.type === 'remove');
+      const dragStart = changes.some((c) => c.type === 'position' && c.dragging === true);
+      const dragEnd = changes.some((c) => c.type === 'position' && c.dragging === false);
+
+      if (removing) pushHistory();
+      if (dragStart && !dragSnapshotTaken) {
+        pushHistory();
+        dragSnapshotTaken = true;
+      }
+      if (dragEnd) dragSnapshotTaken = false;
+
+      let nodes = applyNodeChanges(changes, get().nodes);
+      if (dragEnd) {
+        const moved = new Set<string>();
+        for (const c of changes) if (c.type === 'position' && c.dragging === false) moved.add(c.id);
+        nodes = nodes.map((n) =>
+          moved.has(n.id) && !n.data.pinned ? { ...n, data: { ...n.data, pinned: true } } : n,
+        );
+      }
+      let selectedNodeId: string | null | undefined;
+      for (const c of changes) {
+        if (c.type === 'select' && c.selected) selectedNodeId = c.id;
+        if (c.type === 'remove' && c.id === get().selectedNodeId) selectedNodeId = null;
+      }
+      set({
+        nodes,
+        ...(selectedNodeId !== undefined ? { selectedNodeId } : {}),
+        ...(selectedNodeId ? { selectedEdgeId: null } : {}),
+      });
+    },
+
+    onEdgesChange: (changes) => {
+      if (changes.some((c) => c.type === 'remove')) pushHistory();
+      let selectedEdgeId: string | undefined;
+      for (const c of changes) if (c.type === 'select' && c.selected) selectedEdgeId = c.id;
+      set({
+        edges: applyEdgeChanges(changes, get().edges),
+        ...(selectedEdgeId ? { selectedEdgeId, selectedNodeId: null } : {}),
+      });
+    },
+
+    onConnect: (connection) => {
+      if (!connection.source || !connection.target || connection.source === connection.target)
+        return;
+      pushHistory();
+      const edge: FlowEdge = {
+        id: newId('e'),
+        source: connection.source,
+        target: connection.target,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
+        type: 'conditional',
+        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+        data: { style: 'solid' },
+      };
+      set({ edges: addEdge(edge, get().edges) });
+    },
+
+    setRole: (role) => {
+      saveRole(role);
+      set({ currentRole: role });
+    },
+
+    completeOnboarding: (role) => {
+      saveRole(role);
+      set({ currentRole: role, needsOnboarding: false });
+    },
+
+    setProjectTitle: (projectTitle) => set({ projectTitle }),
+    selectNode: (id) =>
+      set({ selectedNodeId: id, selectedEdgeId: id ? null : get().selectedEdgeId }),
+    selectEdge: (id) =>
+      set({ selectedEdgeId: id, selectedNodeId: id ? null : get().selectedNodeId }),
+
+    addNode: (type, position) => {
+      pushHistory();
+      const id = newId();
+      const def = NODE_TYPE_MAP[type];
+      const node: FlowNode = {
+        id,
+        type,
+        position,
+        data: { label: def.label.ko, nodeType: type, pinned: true },
+        selected: true,
+      };
+      set({
+        nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), node],
+        selectedNodeId: id,
+        selectedEdgeId: null,
+      });
+      return id;
+    },
+
+    deleteNode: (id) => {
+      pushHistory();
+      set({
+        nodes: get().nodes.filter((n) => n.id !== id),
+        edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+        selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
+      });
+    },
+
+    deleteEdge: (id) => {
+      pushHistory();
+      set({
+        edges: get().edges.filter((e) => e.id !== id),
+        selectedEdgeId: get().selectedEdgeId === id ? null : get().selectedEdgeId,
+      });
+    },
+
+    updateNodeData: (id, data) => {
+      pushHistory();
+      set({
+        nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
+      });
+    },
+
+    changeNodeType: (id, type) => {
+      pushHistory();
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id ? { ...n, type, data: { ...n.data, nodeType: type, color: undefined } } : n,
+        ),
+      });
+    },
+
+    updateEdge: (id, patch) => {
+      pushHistory();
+      set({
+        edges: get().edges.map((e) =>
+          e.id === id
+            ? {
+                ...e,
+                label: patch.label !== undefined ? patch.label || undefined : e.label,
+                data: {
+                  ...e.data,
+                  condition:
+                    patch.label !== undefined ? patch.label || undefined : e.data?.condition,
+                  style: patch.style ?? e.data?.style ?? 'solid',
+                },
+              }
+            : e,
+        ),
+      });
+    },
+
+    generateFromPrompt: async (prompt, language) => {
+      abortController?.abort();
+      abortController = new AbortController();
+      set({ isGenerating: true, error: null, notice: null });
+      try {
+        const result = await generateFlow(
+          prompt,
+          get().currentRole,
+          language,
+          abortController.signal,
+        );
+        const parsed = parseAIFlow(result.flow);
+        applyGenerated(
+          { ...parsed, title: parsed.title ?? prompt.slice(0, 40) },
+          result.mock,
+          false,
+        );
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        set({ isGenerating: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+
+    modifyWithPrompt: async (prompt, language) => {
+      const { nodes, edges, projectTitle, currentRole } = get();
+      if (nodes.length === 0) return get().generateFromPrompt(prompt, language);
+      abortController?.abort();
+      abortController = new AbortController();
+      set({ isGenerating: true, error: null, notice: null });
+      try {
+        const result = await modifyFlow(
+          prompt,
+          currentRole,
+          toAIFlow(nodes, edges, projectTitle),
+          language,
+          abortController.signal,
+        );
+        const parsed = parseAIFlow(result.flow, nodes);
+        applyGenerated(parsed, result.mock, true);
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        set({ isGenerating: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+
+    cancelGeneration: () => {
+      abortController?.abort();
+      abortController = null;
+      set({ isGenerating: false });
+    },
+
+    autoLayout: (direction) => {
+      const { nodes, edges, layoutDirection } = get();
+      if (nodes.length === 0) return;
+      pushHistory();
+      const dir = direction ?? layoutDirection;
+      const directionChanged = dir !== layoutDirection;
+      const input = directionChanged
+        ? nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }))
+        : nodes;
+      set({
+        nodes: layoutFlow(input, edges, { direction: dir, respectPinned: !directionChanged }),
+        layoutDirection: dir,
+        fitViewToken: get().fitViewToken + 1,
+      });
+    },
+
+    toggleDirection: () => {
+      const next: LayoutDirection = get().layoutDirection === 'TB' ? 'LR' : 'TB';
+      get().autoLayout(next);
+    },
+
+    undo: () => {
+      const { history, historyIndex, nodes, edges } = get();
+      if (historyIndex < 0) return;
+      // When at the tip, stash the current state so redo can return to it.
+      if (historyIndex === history.length - 1) {
+        const withCurrent = [...history, { nodes, edges }];
+        set({ history: withCurrent });
+      }
+      applySnapshot(history[historyIndex], historyIndex - 1);
+    },
+
+    redo: () => {
+      const { history, historyIndex } = get();
+      const nextIndex = historyIndex + 2;
+      if (nextIndex >= history.length) return;
+      applySnapshot(history[nextIndex], nextIndex - 1);
+    },
+
+    canUndo: () => get().historyIndex >= 0,
+    canRedo: () => get().historyIndex + 2 < get().history.length,
+
+    newProject: () => {
+      set({
+        ...blankProject(get().currentRole),
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        history: [],
+        historyIndex: -1,
+        error: null,
+        notice: null,
+        fitViewToken: get().fitViewToken + 1,
+      });
+    },
+
+    loadProject: (id) => {
+      const project = get().projects.find((p) => p.id === id);
+      if (!project) return;
+      set({
+        projectId: project.id,
+        projectTitle: project.title,
+        createdAt: project.createdAt,
+        nodes: project.nodes,
+        edges: project.edges,
+        layoutDirection: project.layoutDirection ?? 'TB',
+        currentRole: project.role,
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        history: [],
+        historyIndex: -1,
+        error: null,
+        notice: null,
+        fitViewToken: get().fitViewToken + 1,
+      });
+      localStorage.setItem('bfd_last_project', project.id);
+    },
+
+    deleteProject: (id) => {
+      const projects = removeProject(id);
+      set({ projects });
+      if (get().projectId === id) get().newProject();
+    },
+
+    importProject: (project) => {
+      const imported: FlowProject = {
+        ...project,
+        id: newId('flow'),
+        title: project.title || '',
+        role: project.role ?? get().currentRole,
+        layoutDirection: project.layoutDirection ?? 'TB',
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        version: 1,
+      };
+      const projects = upsertProject(imported);
+      set({ projects });
+      get().loadProject(imported.id);
+    },
+
+    toProject: () => {
+      const { projectId, projectTitle, currentRole, nodes, edges, layoutDirection, createdAt } =
+        get();
+      return {
+        id: projectId,
+        title: projectTitle,
+        role: currentRole,
+        nodes,
+        edges,
+        layoutDirection,
+        createdAt,
+        updatedAt: nowIso(),
+        version: 1,
+      };
+    },
+
+    refreshProjects: () => set({ projects: loadProjects() }),
+    clearError: () => set({ error: null }),
+    clearNotice: () => set({ notice: null }),
+  };
+});
+
+// Autosave: debounce 1s after node/edge/title/role changes.
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+useFlowStore.subscribe((state, prev) => {
+  if (
+    state.nodes === prev.nodes &&
+    state.edges === prev.edges &&
+    state.projectTitle === prev.projectTitle &&
+    state.currentRole === prev.currentRole &&
+    state.layoutDirection === prev.layoutDirection
+  ) {
+    return;
+  }
+  if (state.nodes.length === 0 && state.edges.length === 0 && !state.projectTitle) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const projects = upsertProject(useFlowStore.getState().toProject());
+    useFlowStore.setState({ projects });
+  }, 1000);
+});
