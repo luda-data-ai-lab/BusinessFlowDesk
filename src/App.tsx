@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlowCanvas } from './components/Canvas/FlowCanvas';
 import { Header } from './components/Header/Header';
 import { RoleSelectModal } from './components/Onboarding/RoleSelectModal';
 import { PromptInput } from './components/PromptBar/PromptInput';
 import { Sidebar } from './components/Sidebar/Sidebar';
+import { TemplateGalleryModal } from './components/Templates/TemplateGalleryModal';
 import { useBreakpoint } from './hooks/useMediaQuery';
 import { useUndoRedo } from './hooks/useUndoRedo';
-import { useT } from './i18n';
+import { t as translate, useI18n, useT } from './i18n';
+import { useFlowStore } from './hooks/useFlowStore';
+import { clearShareHash, hasShareHash, readShareHash } from './services/share';
 
 export default function App() {
   const t = useT();
@@ -14,6 +17,29 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const readOnly = isMobile;
   useUndoRedo(!readOnly);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!hasShareHash()) return;
+      const store = useFlowStore.getState();
+      try {
+        const project = await readShareHash();
+        if (project) {
+          store.importProject(project);
+          useFlowStore.setState({ notice: 'shared', needsOnboarding: false });
+        }
+      } catch {
+        useFlowStore.setState({
+          error: translate('sharedInvalid', useI18n.getState().language),
+        });
+      } finally {
+        clearShareHash();
+      }
+    };
+    void load();
+    window.addEventListener('hashchange', load);
+    return () => window.removeEventListener('hashchange', load);
+  }, []);
   const sidebarCollapsed = isMobile || (isTablet && !sidebarOpen) || (!isTablet && !sidebarOpen);
 
   return (
@@ -38,6 +64,7 @@ export default function App() {
       </div>
       {!readOnly && <PromptInput />}
       <RoleSelectModal />
+      {!readOnly && <TemplateGalleryModal />}
     </div>
   );
 }

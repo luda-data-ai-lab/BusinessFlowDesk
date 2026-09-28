@@ -39,6 +39,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
   const addNode = useFlowStore((s) => s.addNode);
   const selectNode = useFlowStore((s) => s.selectNode);
   const selectEdge = useFlowStore((s) => s.selectEdge);
+  const openTemplates = useFlowStore((s) => s.setTemplateGalleryOpen);
   const isGenerating = useFlowStore((s) => s.isGenerating);
   const fitViewToken = useFlowStore((s) => s.fitViewToken);
   const { screenToFlowPosition } = useReactFlow();
@@ -92,8 +93,6 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2.5}
         selectionMode={SelectionMode.Partial}
@@ -120,10 +119,19 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
         </Panel>
         <MiniMap />
         {nodes.length === 0 && !isGenerating && (
-          <Panel position="top-center" className="pointer-events-none !mt-24 max-w-md text-center">
+          <Panel position="top-center" className="!mt-24 max-w-md text-center">
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-6 py-8 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-400">
               <div className="mb-2 text-3xl">🗺️</div>
               {t('emptyCanvas')}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => openTemplates(true)}
+                  className="mt-3 block w-full rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-blue-50 dark:hover:bg-blue-950"
+                >
+                  🧩 {t('emptyOrTemplate')}
+                </button>
+              )}
             </div>
           </Panel>
         )}

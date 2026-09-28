@@ -1,8 +1,10 @@
 import { memo } from 'react';
 import { InlineLabel, NodeHandles, type FlowNodeProps } from './shared';
 import { nodeColor, tint } from './nodeStyle';
+import { useT } from '../../../i18n';
 
 export const DecisionNode = memo(function DecisionNode({ id, data, selected }: FlowNodeProps) {
+  const t = useT();
   const color = nodeColor(data);
   return (
     <div className="group relative h-[150px] w-[150px]">
@@ -28,10 +30,10 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: F
         )}
       </div>
       <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-green-600 dark:text-green-400">
-        Yes
+        {t('yes')}
       </span>
       <span className="absolute -right-6 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-red-500 dark:text-red-400">
-        No
+        {t('no')}
       </span>
     </div>
   );

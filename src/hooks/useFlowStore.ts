@@ -10,6 +10,7 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import type {
+  AIFlowResponse,
   FlowEdge,
   FlowEdgeData,
   FlowNode,
@@ -97,6 +98,10 @@ export interface FlowState {
   loadProject: (id: string) => void;
   deleteProject: (id: string) => void;
   importProject: (project: FlowProject) => void;
+  /** Starts a new project from a template flow (already localized). */
+  applyTemplate: (flow: AIFlowResponse) => void;
+  templateGalleryOpen: boolean;
+  setTemplateGalleryOpen: (open: boolean) => void;
   toProject: () => FlowProject;
   refreshProjects: () => void;
   clearError: () => void;
@@ -551,6 +556,22 @@ export const useFlowStore = create<FlowState>((set, get) => {
       const projects = upsertProject(imported);
       set({ projects });
       get().loadProject(imported.id);
+    },
+
+    templateGalleryOpen: false,
+    setTemplateGalleryOpen: (open) => set({ templateGalleryOpen: open }),
+
+    applyTemplate: (flow) => {
+      get().newProject();
+      const parsed = parseAIFlow(flow);
+      const { layoutDirection } = get();
+      set({
+        nodes: layoutFlow(parsed.nodes, parsed.edges, { direction: layoutDirection }),
+        edges: parsed.edges,
+        projectTitle: flow.title ?? '',
+        templateGalleryOpen: false,
+        fitViewToken: get().fitViewToken + 1,
+      });
     },
 
     toProject: () => {

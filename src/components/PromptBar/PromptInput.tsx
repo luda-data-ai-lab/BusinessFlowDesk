@@ -62,6 +62,14 @@ export function PromptInput() {
             </button>
           </div>
         )}
+        {notice === 'shared' && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
+            <span>🔗 {t('sharedNotice')}</span>
+            <button type="button" onClick={clearNotice} aria-label="close" className="shrink-0">
+              ✕
+            </button>
+          </div>
+        )}
         {!value && !isGenerating && <PromptSuggestions onPick={(p) => setValue(p)} />}
         <div className="flex items-end gap-2">
           {hasFlow && (
