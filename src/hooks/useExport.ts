@@ -7,10 +7,12 @@ import {
   readProjectFile,
 } from '../services/export';
 import { flowBounds } from '../utils/swimlanes';
+import { buildShareUrl, copyText } from '../services/share';
 
 export function useExport() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const run = useCallback(async (fn: () => Promise<void> | void) => {
     setBusy(true);
@@ -36,6 +38,15 @@ export function useExport() {
     exportPng: () => run(() => exportFlowAsPng(bounds(), title())),
     exportSvg: () => run(() => exportFlowAsSvg(bounds(), title())),
     exportJson: () => run(() => exportFlowAsJson(useFlowStore.getState().toProject())),
+    copied,
+    shareLink: () =>
+      run(async () => {
+        const url = await buildShareUrl(useFlowStore.getState().toProject());
+        if (url.length > 32_000) throw new Error('Flow too large for a share link');
+        await copyText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }),
     importJson: (file: File) =>
       run(async () => {
         const project = await readProjectFile(file);
