@@ -16,6 +16,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
   const { language, setLanguage } = useI18n();
   const title = useFlowStore((s) => s.projectTitle);
   const setProjectTitle = useFlowStore((s) => s.setProjectTitle);
+  const openTemplates = useFlowStore((s) => s.setTemplateGalleryOpen);
   const [draft, setDraft] = useState(title);
   useEffect(() => setDraft(title), [title]);
 
@@ -50,6 +51,16 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
       />
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
         {!readOnly && <ProjectMenu />}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => openTemplates(true)}
+            className="h-8 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            title={t('templates')}
+          >
+            🧩 <span className="hidden sm:inline">{t('templates')}</span>
+          </button>
+        )}
         <RoleSelector />
         {!readOnly && <ExportMenu />}
         <button

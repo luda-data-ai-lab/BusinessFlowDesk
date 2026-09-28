@@ -88,7 +88,7 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
       <ToolButton label="Zoom out" onClick={() => zoomOut()}>
         −
       </ToolButton>
-      <ToolButton label={t('fitView')} onClick={() => fitFlow()}>
+      <ToolButton label={t('fitView')} onClick={() => fitFlow(300, false)}>
         ⛶
       </ToolButton>
       <span className="ml-2 mr-1 hidden text-[11px] text-slate-400 sm:inline">
