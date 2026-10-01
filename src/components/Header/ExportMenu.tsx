@@ -7,8 +7,17 @@ import { Button } from '../common/Button';
 export function ExportMenu() {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const { busy, error, copied, exportPng, exportSvg, exportJson, importJson, shareLink } =
-    useExport();
+  const {
+    busy,
+    error,
+    copied,
+    exportPng,
+    exportSvg,
+    exportJson,
+    exportPptx,
+    importJson,
+    shareLink,
+  } = useExport();
   const hasNodes = useFlowStore((s) => s.nodes.length > 0);
   const fileRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -54,6 +63,7 @@ export function ExportMenu() {
         >
           {item(`🖼 ${t('exportPng')}`, exportPng, !hasNodes)}
           {item(`🧩 ${t('exportSvg')}`, exportSvg, !hasNodes)}
+          {item(`📊 ${t('exportPptx')}`, exportPptx, !hasNodes)}
           {item(`💾 ${t('exportJson')}`, exportJson, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`🔗 ${t('shareLink')}`, shareLink, !hasNodes)}
