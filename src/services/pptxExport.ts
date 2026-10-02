@@ -17,6 +17,10 @@ const STR = {
   en: { steps: 'Steps', role: 'Role', yes: 'Yes', no: 'No', dept: 'Owner', time: 'Time' },
 };
 
+function isDarkMode() {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
+
 function fileStem(title: string): string {
   const date = new Date().toISOString().slice(0, 10);
   const safe =
@@ -38,7 +42,7 @@ async function renderPng(
   const width = Math.ceil(rawWidth * zoom);
   const height = Math.ceil(rawHeight * zoom);
   const dataUrl = await toPng(el, {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: isDarkMode() ? '#0F172A' : '#F8FAFC',
     width,
     height,
     pixelRatio: 2,
@@ -88,12 +92,9 @@ function branchText(
     .filter((e) => e.source === node.id)
     .map((e) => {
       const target = byId.get(e.target)?.data.label ?? e.target;
+      const custom = (typeof e.label === 'string' ? e.label : '') || e.data?.condition || '';
       const cond =
-        e.sourceHandle === 'yes'
-          ? s.yes
-          : e.sourceHandle === 'no'
-            ? s.no
-            : (e.data?.condition ?? (typeof e.label === 'string' ? e.label : ''));
+        custom || (e.sourceHandle === 'yes' ? s.yes : e.sourceHandle === 'no' ? s.no : '');
       return cond ? `${cond} → ${target}` : `→ ${target}`;
     })
     .join(', ');
