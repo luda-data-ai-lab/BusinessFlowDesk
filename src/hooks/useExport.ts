@@ -8,6 +8,8 @@ import {
 } from '../services/export';
 import { flowBounds } from '../utils/swimlanes';
 import { buildShareUrl, copyText } from '../services/share';
+import { exportFlowAsPptx } from '../services/pptxExport';
+import { useI18n } from '../i18n';
 
 export function useExport() {
   const [busy, setBusy] = useState(false);
@@ -38,6 +40,14 @@ export function useExport() {
     exportPng: () => run(() => exportFlowAsPng(bounds(), title())),
     exportSvg: () => run(() => exportFlowAsSvg(bounds(), title())),
     exportJson: () => run(() => exportFlowAsJson(useFlowStore.getState().toProject())),
+    exportPptx: () =>
+      run(() =>
+        exportFlowAsPptx(
+          useFlowStore.getState().toProject(),
+          bounds(),
+          useI18n.getState().language,
+        ),
+      ),
     copied,
     shareLink: () =>
       run(async () => {
