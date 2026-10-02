@@ -15,6 +15,8 @@ export function ExportMenu() {
     exportSvg,
     exportJson,
     exportPptx,
+    exportMermaid,
+    exportMarkdown,
     importJson,
     shareLink,
   } = useExport();
@@ -65,6 +67,9 @@ export function ExportMenu() {
           {item(`🧩 ${t('exportSvg')}`, exportSvg, !hasNodes)}
           {item(`📊 ${t('exportPptx')}`, exportPptx, !hasNodes)}
           {item(`💾 ${t('exportJson')}`, exportJson, !hasNodes)}
+          <div className="my-1 h-px bg-border dark:bg-slate-600" />
+          {item(`🧜 ${t('exportMermaid')}`, exportMermaid, !hasNodes)}
+          {item(`📝 ${t('exportMarkdown')}`, exportMarkdown, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`🔗 ${t('shareLink')}`, shareLink, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />

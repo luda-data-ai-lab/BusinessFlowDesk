@@ -16,7 +16,7 @@
 - **공유 링크** — 내보내기 메뉴의 `공유 링크 복사`. 플로우 전체가 URL 해시(`#share=`)에 deflate 압축되어 서버 없이 공유·열기 가능. 링크를 열면 내 플로우에 복사본으로 저장
 - **Undo / Redo** — `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, `Ctrl/Cmd+Y`
 - **로컬 저장** — localStorage 자동 저장(1초 디바운스), 프로젝트 목록 관리
-- **내보내기 / 가져오기** — PNG, SVG, JSON
+- **내보내기 / 가져오기** — PNG, SVG, JSON, Mermaid(.mmd), Markdown 문서(단계 목록 + 흐름표 + Mermaid 블록)
 - **반응형** — 데스크톱 전체 기능, 태블릿 축소 사이드바, 모바일 뷰어 전용
 - **다크 모드** — 시스템 설정 따름, 한국어/영어 UI
 

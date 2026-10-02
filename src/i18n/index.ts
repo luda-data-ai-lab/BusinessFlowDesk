@@ -31,6 +31,8 @@ const STRINGS = {
   exportSvg: { ko: 'SVG 벡터', en: 'SVG vector' },
   exportPptx: { ko: 'PPTX 슬라이드', en: 'PPTX slides' },
   exportJson: { ko: 'JSON 백업', en: 'JSON backup' },
+  exportMermaid: { ko: 'Mermaid (.mmd)', en: 'Mermaid (.mmd)' },
+  exportMarkdown: { ko: 'Markdown 문서', en: 'Markdown document' },
   importJson: { ko: 'JSON 불러오기', en: 'Import JSON' },
   templates: { ko: '템플릿 갤러리', en: 'Template gallery' },
   templatesHint: {

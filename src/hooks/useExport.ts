@@ -4,12 +4,14 @@ import {
   exportFlowAsJson,
   exportFlowAsPng,
   exportFlowAsSvg,
+  exportFlowAsText,
   readProjectFile,
 } from '../services/export';
+import { toMarkdown, toMermaid } from '../services/textExport';
+import { useI18n } from '../i18n';
 import { flowBounds } from '../utils/swimlanes';
 import { buildShareUrl, copyText } from '../services/share';
 import { exportFlowAsPptx } from '../services/pptxExport';
-import { useI18n } from '../i18n';
 
 export function useExport() {
   const [busy, setBusy] = useState(false);
@@ -40,6 +42,16 @@ export function useExport() {
     exportPng: () => run(() => exportFlowAsPng(bounds(), title())),
     exportSvg: () => run(() => exportFlowAsSvg(bounds(), title())),
     exportJson: () => run(() => exportFlowAsJson(useFlowStore.getState().toProject())),
+    exportMermaid: () =>
+      run(() => {
+        const project = useFlowStore.getState().toProject();
+        exportFlowAsText(toMermaid(project, useI18n.getState().language), title(), 'mmd');
+      }),
+    exportMarkdown: () =>
+      run(() => {
+        const project = useFlowStore.getState().toProject();
+        exportFlowAsText(toMarkdown(project, useI18n.getState().language), title(), 'md');
+      }),
     exportPptx: () =>
       run(() =>
         exportFlowAsPptx(
