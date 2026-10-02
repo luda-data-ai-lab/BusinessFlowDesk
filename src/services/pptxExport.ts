@@ -11,6 +11,8 @@ const MAX_DIMENSION = 4096;
 const SLIDE_W = 13.333;
 const SLIDE_H = 7.5;
 const STEPS_PER_SLIDE = 12;
+const YES_WORDS = ['예', 'Yes'];
+const DEFAULT_YES_NO = [...YES_WORDS, '아니오', 'No'];
 
 const STR = {
   ko: { steps: '단계 목록', role: '직군', yes: '예', no: '아니오', dept: '담당', time: '소요' },
@@ -92,9 +94,16 @@ function branchText(
     .filter((e) => e.source === node.id)
     .map((e) => {
       const target = byId.get(e.target)?.data.label ?? e.target;
-      const custom = (typeof e.label === 'string' ? e.label : '') || e.data?.condition || '';
+      const raw = (typeof e.label === 'string' ? e.label : '') || e.data?.condition || '';
+      const isDefault = DEFAULT_YES_NO.includes(raw);
       const cond =
-        custom || (e.sourceHandle === 'yes' ? s.yes : e.sourceHandle === 'no' ? s.no : '');
+        raw && !isDefault
+          ? raw
+          : e.sourceHandle === 'yes' || (isDefault && YES_WORDS.includes(raw))
+            ? s.yes
+            : e.sourceHandle === 'no' || isDefault
+              ? s.no
+              : '';
       return cond ? `${cond} → ${target}` : `→ ${target}`;
     })
     .join(', ');
