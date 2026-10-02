@@ -14,6 +14,7 @@ export function ExportMenu() {
     exportPng,
     exportSvg,
     exportJson,
+    exportPptx,
     exportMermaid,
     exportMarkdown,
     importJson,
@@ -64,6 +65,7 @@ export function ExportMenu() {
         >
           {item(`🖼 ${t('exportPng')}`, exportPng, !hasNodes)}
           {item(`🧩 ${t('exportSvg')}`, exportSvg, !hasNodes)}
+          {item(`📊 ${t('exportPptx')}`, exportPptx, !hasNodes)}
           {item(`💾 ${t('exportJson')}`, exportJson, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`🧜 ${t('exportMermaid')}`, exportMermaid, !hasNodes)}

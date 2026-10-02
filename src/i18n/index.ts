@@ -29,6 +29,7 @@ const STRINGS = {
   },
   sharedInvalid: { ko: '공유 링크를 읽을 수 없어요', en: 'Could not read the share link' },
   exportSvg: { ko: 'SVG 벡터', en: 'SVG vector' },
+  exportPptx: { ko: 'PPTX 슬라이드', en: 'PPTX slides' },
   exportJson: { ko: 'JSON 백업', en: 'JSON backup' },
   exportMermaid: { ko: 'Mermaid (.mmd)', en: 'Mermaid (.mmd)' },
   exportMarkdown: { ko: 'Markdown 문서', en: 'Markdown document' },

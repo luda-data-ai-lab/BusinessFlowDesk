@@ -11,6 +11,7 @@ import { toMarkdown, toMermaid } from '../services/textExport';
 import { useI18n } from '../i18n';
 import { flowBounds } from '../utils/swimlanes';
 import { buildShareUrl, copyText } from '../services/share';
+import { exportFlowAsPptx } from '../services/pptxExport';
 
 export function useExport() {
   const [busy, setBusy] = useState(false);
@@ -51,6 +52,14 @@ export function useExport() {
         const project = useFlowStore.getState().toProject();
         exportFlowAsText(toMarkdown(project, useI18n.getState().language), title(), 'md');
       }),
+    exportPptx: () =>
+      run(() =>
+        exportFlowAsPptx(
+          useFlowStore.getState().toProject(),
+          bounds(),
+          useI18n.getState().language,
+        ),
+      ),
     copied,
     shareLink: () =>
       run(async () => {
