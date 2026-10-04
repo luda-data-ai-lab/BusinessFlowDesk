@@ -47,7 +47,7 @@ function mermaidText(text: string): string {
   return `"${text.replace(/"/g, '#quot;').replace(/\n/g, '<br/>')}"`;
 }
 
-function edgeLabel(e: FlowEdge, lang: Language): string {
+export function edgeLabel(e: FlowEdge, lang: Language): string {
   const raw = typeof e.label === 'string' ? e.label.trim() : '';
   if (raw) return raw;
   const cond = e.data?.condition?.trim();
@@ -58,7 +58,7 @@ function edgeLabel(e: FlowEdge, lang: Language): string {
 }
 
 /** Depth-first order from start nodes so the document reads top to bottom. */
-function orderNodes(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
+export function orderNodes(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const out = new Map<string, FlowNode>();
   const incoming = new Set(edges.map((e) => e.target));

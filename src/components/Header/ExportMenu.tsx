@@ -21,6 +21,7 @@ export function ExportMenu() {
     shareLink,
   } = useExport();
   const hasNodes = useFlowStore((s) => s.nodes.length > 0);
+  const openScenarios = useFlowStore((s) => s.setTestScenarioOpen);
   const fileRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +71,8 @@ export function ExportMenu() {
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`🧜 ${t('exportMermaid')}`, exportMermaid, !hasNodes)}
           {item(`📝 ${t('exportMarkdown')}`, exportMarkdown, !hasNodes)}
+          <div className="my-1 h-px bg-border dark:bg-slate-600" />
+          {item(`🧪 ${t('testScenarios')}`, () => openScenarios(true), !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />
           {item(`🔗 ${t('shareLink')}`, shareLink, !hasNodes)}
           <div className="my-1 h-px bg-border dark:bg-slate-600" />

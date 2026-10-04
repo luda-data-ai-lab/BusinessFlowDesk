@@ -5,6 +5,7 @@ import { RoleSelectModal } from './components/Onboarding/RoleSelectModal';
 import { PromptInput } from './components/PromptBar/PromptInput';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TemplateGalleryModal } from './components/Templates/TemplateGalleryModal';
+import { TestScenarioModal } from './components/TestScenarios/TestScenarioModal';
 import { useBreakpoint } from './hooks/useMediaQuery';
 import { useUndoRedo } from './hooks/useUndoRedo';
 import { t as translate, useI18n, useT } from './i18n';
@@ -65,6 +66,7 @@ export default function App() {
       {!readOnly && <PromptInput />}
       <RoleSelectModal />
       {!readOnly && <TemplateGalleryModal />}
+      {!readOnly && <TestScenarioModal />}
     </div>
   );
 }
