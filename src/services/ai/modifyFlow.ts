@@ -9,6 +9,7 @@ export function modifyFlow(
   existingFlow: AIFlowResponse,
   language: Language,
   signal?: AbortSignal,
+  systems: string[] = [],
 ) {
-  return requestFlow({ prompt, role, existingFlow, language }, signal);
+  return requestFlow({ prompt, role, existingFlow, language, systems }, signal);
 }

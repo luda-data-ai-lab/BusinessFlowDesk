@@ -55,9 +55,16 @@ ${ROLE_PROMPTS[role]}
 ${OUTPUT_SCHEMA}`;
 }
 
-export function buildUserPrompt(prompt: string, existingFlow: AIFlowResponse | null): string {
+export function buildUserPrompt(
+  prompt: string,
+  existingFlow: AIFlowResponse | null,
+  systems: string[] = [],
+): string {
+  const catalog = systems.length
+    ? `\n\n[등록된 업무 시스템] ${systems.join(', ')}\n단계가 위 시스템 중 하나에서 수행되면 system 필드에 반드시 위 이름을 그대로 사용하세요. 목록에 없는 시스템이 꼭 필요할 때만 새 이름을 적습니다.`
+    : '';
   if (!existingFlow || existingFlow.nodes.length === 0) {
-    return `다음 업무를 플로우로 그려주세요:\n\n${prompt}`;
+    return `다음 업무를 플로우로 그려주세요:\n\n${prompt}${catalog}`;
   }
   return `[기존 플로우 JSON]
 ${JSON.stringify(existingFlow, null, 0)}
@@ -65,5 +72,5 @@ ${JSON.stringify(existingFlow, null, 0)}
 [사용자 요청]
 ${prompt}
 
-위 요청을 반영해 기존 플로우를 수정하세요. 변경되지 않은 노드는 id와 label을 그대로 유지하고, 새 노드에는 새로운 id를 부여합니다. 수정된 전체 플로우(모든 nodes와 edges)를 동일한 JSON 스키마로 반환합니다.`;
+위 요청을 반영해 기존 플로우를 수정하세요. 변경되지 않은 노드는 id와 label을 그대로 유지하고, 새 노드에는 새로운 id를 부여합니다. 수정된 전체 플로우(모든 nodes와 edges)를 동일한 JSON 스키마로 반환합니다.${catalog}`;
 }

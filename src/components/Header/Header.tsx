@@ -17,6 +17,8 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
   const title = useFlowStore((s) => s.projectTitle);
   const setProjectTitle = useFlowStore((s) => s.setProjectTitle);
   const openTemplates = useFlowStore((s) => s.setTemplateGalleryOpen);
+  const openSystems = useFlowStore((s) => s.setSystemCatalogOpen);
+  const systemCount = useFlowStore((s) => s.systems.length);
   const [draft, setDraft] = useState(title);
   useEffect(() => setDraft(title), [title]);
 
@@ -59,6 +61,17 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
             title={t('templates')}
           >
             🧩 <span className="hidden sm:inline">{t('templates')}</span>
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => openSystems(true)}
+            className="h-8 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            title={t('systemCatalog')}
+          >
+            🖥 <span className="hidden sm:inline">{t('systemCatalogShort')}</span>
+            {systemCount > 0 && <span className="text-slate-400"> ({systemCount})</span>}
           </button>
         )}
         <RoleSelector />

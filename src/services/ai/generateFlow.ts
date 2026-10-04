@@ -29,11 +29,17 @@ export async function requestFlow(
   } catch (err) {
     if (signal?.aborted) throw err;
     // No backend available (e.g. static hosting): degrade to the local heuristic generator.
-    return { flow: generateMockFlow(body.prompt, body.role, body.existingFlow), mock: true };
+    return {
+      flow: generateMockFlow(body.prompt, body.role, body.existingFlow, body.systems),
+      mock: true,
+    };
   }
 
   if (response.status === 404) {
-    return { flow: generateMockFlow(body.prompt, body.role, body.existingFlow), mock: true };
+    return {
+      flow: generateMockFlow(body.prompt, body.role, body.existingFlow, body.systems),
+      mock: true,
+    };
   }
 
   const text = await response.text();
@@ -64,6 +70,7 @@ export function generateFlow(
   role: RoleType,
   language: Language,
   signal?: AbortSignal,
+  systems: string[] = [],
 ) {
-  return requestFlow({ prompt, role, existingFlow: null, language }, signal);
+  return requestFlow({ prompt, role, existingFlow: null, language, systems }, signal);
 }

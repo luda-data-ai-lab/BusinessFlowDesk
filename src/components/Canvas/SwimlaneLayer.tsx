@@ -3,6 +3,7 @@ import { ViewportPortal } from '@xyflow/react';
 import { useFlowStore } from '../../hooks/useFlowStore';
 import { useT } from '../../i18n';
 import { computeLanes, LANE_HEADER } from '../../utils/swimlanes';
+import { findSystem } from '../../services/systemCatalog';
 
 const LANE_COLORS = ['#2563EB', '#7C3AED', '#0891B2', '#D97706', '#DB2777', '#059669', '#64748B'];
 
@@ -12,6 +13,7 @@ export function SwimlaneLayer() {
   const laneBy = useFlowStore((s) => s.laneBy);
   const nodes = useFlowStore((s) => s.nodes);
   const direction = useFlowStore((s) => s.layoutDirection);
+  const systems = useFlowStore((s) => s.systems);
 
   const lanes = useMemo(
     () => (enabled ? computeLanes(nodes, direction, laneBy) : []),
@@ -24,7 +26,9 @@ export function SwimlaneLayer() {
   return (
     <ViewportPortal>
       {lanes.map((lane, i) => {
-        const color = LANE_COLORS[i % LANE_COLORS.length];
+        const color =
+          (laneBy === 'system' && findSystem(systems, lane.key)?.color) ||
+          LANE_COLORS[i % LANE_COLORS.length];
         return (
           <div
             key={lane.key || '__unassigned'}
