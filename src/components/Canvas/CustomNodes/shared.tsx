@@ -117,17 +117,27 @@ export function InlineLabel({
 
 export function Meta({
   department,
+  system,
   estimatedTime,
 }: {
   department?: string;
+  system?: string;
   estimatedTime?: string;
 }) {
-  if (!department && !estimatedTime) return null;
+  if (!department && !system && !estimatedTime) return null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] leading-none text-slate-500 dark:text-slate-400">
       {department && (
         <span className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-700 dark:text-slate-200">
           {department}
+        </span>
+      )}
+      {system && (
+        <span
+          className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-200"
+          title="System"
+        >
+          🖥 {system}
         </span>
       )}
       {estimatedTime && <span className="inline-flex items-center gap-0.5">⏱ {estimatedTime}</span>}

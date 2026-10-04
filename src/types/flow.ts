@@ -15,10 +15,15 @@ export type NodeType =
 
 export type LayoutDirection = 'TB' | 'LR';
 
+/** Which node attribute swimlanes group by. */
+export type LaneBy = 'department' | 'system';
+
 export interface FlowNodeData extends Record<string, unknown> {
   label: string;
   description?: string;
   department?: string;
+  /** Business system the step runs in (ERP, CRM, …). */
+  system?: string;
   estimatedTime?: string;
   nodeType: NodeType;
   color?: string;
@@ -44,6 +49,7 @@ export interface FlowProject {
   edges: FlowEdge[];
   layoutDirection: LayoutDirection;
   swimlanes?: boolean;
+  laneBy?: LaneBy;
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -56,6 +62,7 @@ export interface AIFlowNode {
   label: string;
   description?: string;
   department?: string;
+  system?: string;
   estimatedTime?: string;
 }
 

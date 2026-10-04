@@ -16,6 +16,7 @@ import type {
   FlowNode,
   FlowNodeData,
   FlowProject,
+  LaneBy,
   LayoutDirection,
   NodeType,
 } from '../types/flow';
@@ -44,6 +45,7 @@ interface Snapshot {
   nodes: FlowNode[];
   edges: FlowEdge[];
   swimlanes: boolean;
+  laneBy: LaneBy;
 }
 
 export interface FlowState {
@@ -55,6 +57,7 @@ export interface FlowState {
   currentRole: RoleType;
   layoutDirection: LayoutDirection;
   swimlanes: boolean;
+  laneBy: LaneBy;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   isGenerating: boolean;
@@ -90,6 +93,8 @@ export interface FlowState {
   autoLayout: (direction?: LayoutDirection) => void;
   toggleDirection: () => void;
   toggleSwimlanes: () => void;
+  /** Enable lanes grouped by `by`; null turns swimlanes off. */
+  setSwimlanes: (by: LaneBy | null) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -126,6 +131,7 @@ function blankProject(
   | 'edges'
   | 'layoutDirection'
   | 'swimlanes'
+  | 'laneBy'
   | 'currentRole'
 > {
   return {
@@ -136,6 +142,7 @@ function blankProject(
     edges: [],
     layoutDirection: 'TB',
     swimlanes: false,
+    laneBy: 'department',
     currentRole: role,
   };
 }
@@ -153,6 +160,7 @@ function initialState() {
         edges: last.edges ?? [],
         layoutDirection: last.layoutDirection ?? 'TB',
         swimlanes: last.swimlanes ?? false,
+        laneBy: last.laneBy ?? 'department',
         currentRole: role,
       }
     : blankProject(role);
@@ -161,9 +169,9 @@ function initialState() {
 
 export const useFlowStore = create<FlowState>((set, get) => {
   const pushHistory = () => {
-    const { nodes, edges, swimlanes, history, historyIndex } = get();
+    const { nodes, edges, swimlanes, laneBy, history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
-    trimmed.push({ nodes, edges, swimlanes });
+    trimmed.push({ nodes, edges, swimlanes, laneBy });
     const overflow = Math.max(0, trimmed.length - HISTORY_LIMIT);
     set({ history: trimmed.slice(overflow), historyIndex: trimmed.length - 1 - overflow });
   };
@@ -173,6 +181,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
       nodes: snap.nodes,
       edges: snap.edges,
       swimlanes: snap.swimlanes,
+      laneBy: snap.laneBy,
       historyIndex: index,
       selectedNodeId: null,
       selectedEdgeId: null,
@@ -184,11 +193,12 @@ export const useFlowStore = create<FlowState>((set, get) => {
     mock: boolean,
     keepExisting: boolean,
   ) => {
-    const { layoutDirection, swimlanes, projectTitle } = get();
+    const { layoutDirection, swimlanes, laneBy, projectTitle } = get();
     const laidOut = layoutFlow(flow.nodes, flow.edges, {
       direction: layoutDirection,
       respectPinned: keepExisting && !swimlanes,
       swimlanes,
+      laneBy,
     });
     pushHistory();
     set({
@@ -235,11 +245,12 @@ export const useFlowStore = create<FlowState>((set, get) => {
       if (dragEnd) {
         const moved = new Set<string>();
         for (const c of changes) if (c.type === 'position' && c.dragging === false) moved.add(c.id);
-        const { swimlanes, layoutDirection } = get();
+        const { swimlanes, laneBy, layoutDirection } = get();
         const lanes = swimlanes
           ? computeLanes(
               nodes.filter((n) => !moved.has(n.id)),
               layoutDirection,
+              laneBy,
             )
           : [];
         nodes = nodes.map((n) => {
@@ -252,8 +263,8 @@ export const useFlowStore = create<FlowState>((set, get) => {
               { x: n.position.x + width / 2, y: n.position.y + height / 2 },
               layoutDirection,
             );
-            if (lane && lane.department !== (data.department?.trim() ?? '')) {
-              data = { ...data, department: lane.department || undefined };
+            if (lane && lane.key !== (data[laneBy]?.trim() ?? '')) {
+              data = { ...data, [laneBy]: lane.key || undefined };
             }
           }
           return data === n.data ? n : { ...n, data };
@@ -351,9 +362,23 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     updateNodeData: (id, data) => {
+      const { nodes, edges, swimlanes, laneBy, layoutDirection } = get();
       pushHistory();
+      const updated = nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n));
+      const prev = nodes.find((n) => n.id === id);
+      const laneChanged =
+        swimlanes &&
+        laneBy in data &&
+        (data[laneBy]?.trim() ?? '') !== (prev?.data[laneBy]?.trim() ?? '');
       set({
-        nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
+        nodes: laneChanged
+          ? layoutFlow(updated, edges, {
+              direction: layoutDirection,
+              respectPinned: false,
+              swimlanes: true,
+              laneBy,
+            })
+          : updated,
       });
     },
 
@@ -438,7 +463,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     autoLayout: (direction) => {
-      const { nodes, edges, layoutDirection, swimlanes } = get();
+      const { nodes, edges, layoutDirection, swimlanes, laneBy } = get();
       if (nodes.length === 0) return;
       pushHistory();
       const dir = direction ?? layoutDirection;
@@ -448,27 +473,36 @@ export const useFlowStore = create<FlowState>((set, get) => {
         ? nodes
         : nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
       set({
-        nodes: layoutFlow(input, edges, { direction: dir, respectPinned, swimlanes }),
+        nodes: layoutFlow(input, edges, { direction: dir, respectPinned, swimlanes, laneBy }),
         layoutDirection: dir,
         fitViewToken: get().fitViewToken + 1,
       });
     },
 
     toggleSwimlanes: () => {
-      const { nodes, edges, layoutDirection, swimlanes } = get();
-      const next = !swimlanes;
+      const { swimlanes, laneBy } = get();
+      get().setSwimlanes(swimlanes ? null : laneBy);
+    },
+
+    setSwimlanes: (by) => {
+      const { nodes, edges, layoutDirection, swimlanes, laneBy } = get();
+      const next = by !== null;
+      const nextBy = by ?? laneBy;
+      if (next === swimlanes && nextBy === laneBy) return;
       if (nodes.length === 0) {
-        set({ swimlanes: next });
+        set({ swimlanes: next, laneBy: nextBy });
         return;
       }
       pushHistory();
       const unpinned = nodes.map((n) => ({ ...n, data: { ...n.data, pinned: false } }));
       set({
         swimlanes: next,
+        laneBy: nextBy,
         nodes: layoutFlow(unpinned, edges, {
           direction: layoutDirection,
           respectPinned: false,
           swimlanes: next,
+          laneBy: nextBy,
         }),
         fitViewToken: get().fitViewToken + 1,
       });
@@ -480,11 +514,11 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     undo: () => {
-      const { history, historyIndex, nodes, edges, swimlanes } = get();
+      const { history, historyIndex, nodes, edges, swimlanes, laneBy } = get();
       if (historyIndex < 0) return;
       // When at the tip, stash the current state so redo can return to it.
       if (historyIndex === history.length - 1) {
-        const withCurrent = [...history, { nodes, edges, swimlanes }];
+        const withCurrent = [...history, { nodes, edges, swimlanes, laneBy }];
         set({ history: withCurrent });
       }
       applySnapshot(history[historyIndex], historyIndex - 1);
@@ -524,6 +558,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
         edges: project.edges,
         layoutDirection: project.layoutDirection ?? 'TB',
         swimlanes: project.swimlanes ?? false,
+        laneBy: project.laneBy ?? 'department',
         currentRole: project.role,
         selectedNodeId: null,
         selectedEdgeId: null,
@@ -583,6 +618,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
         edges,
         layoutDirection,
         swimlanes,
+        laneBy,
         createdAt,
       } = get();
       return {
@@ -593,6 +629,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
         edges,
         layoutDirection,
         swimlanes,
+        laneBy,
         createdAt,
         updatedAt: nowIso(),
         version: 1,
@@ -614,7 +651,8 @@ useFlowStore.subscribe((state, prev) => {
     state.projectTitle === prev.projectTitle &&
     state.currentRole === prev.currentRole &&
     state.layoutDirection === prev.layoutDirection &&
-    state.swimlanes === prev.swimlanes
+    state.swimlanes === prev.swimlanes &&
+    state.laneBy === prev.laneBy
   ) {
     return;
   }

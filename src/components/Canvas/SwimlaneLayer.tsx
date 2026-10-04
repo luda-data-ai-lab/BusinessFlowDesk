@@ -9,12 +9,13 @@ const LANE_COLORS = ['#2563EB', '#7C3AED', '#0891B2', '#D97706', '#DB2777', '#05
 export function SwimlaneLayer() {
   const t = useT();
   const enabled = useFlowStore((s) => s.swimlanes);
+  const laneBy = useFlowStore((s) => s.laneBy);
   const nodes = useFlowStore((s) => s.nodes);
   const direction = useFlowStore((s) => s.layoutDirection);
 
   const lanes = useMemo(
-    () => (enabled ? computeLanes(nodes, direction) : []),
-    [enabled, nodes, direction],
+    () => (enabled ? computeLanes(nodes, direction, laneBy) : []),
+    [enabled, nodes, direction, laneBy],
   );
 
   if (lanes.length === 0) return null;
@@ -26,7 +27,7 @@ export function SwimlaneLayer() {
         const color = LANE_COLORS[i % LANE_COLORS.length];
         return (
           <div
-            key={lane.department || '__unassigned'}
+            key={lane.key || '__unassigned'}
             className="bfd-swimlane pointer-events-none absolute"
             style={{
               left: lane.x,
@@ -67,7 +68,13 @@ export function SwimlaneLayer() {
                       }
                 }
               >
-                {lane.department || t('unassignedLane')}
+                {lane.key
+                  ? laneBy === 'system'
+                    ? `🖥 ${lane.key}`
+                    : lane.key
+                  : laneBy === 'system'
+                    ? t('noSystemLane')
+                    : t('unassignedLane')}
               </span>
             </div>
           </div>

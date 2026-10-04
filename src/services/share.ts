@@ -11,6 +11,7 @@ interface SharePayload {
   r: FlowProject['role'];
   d: FlowProject['layoutDirection'];
   s?: boolean;
+  l?: FlowProject['laneBy'];
   n: Array<Pick<FlowNode, 'id' | 'type' | 'position' | 'data'>>;
   e: Array<
     Pick<FlowEdge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle' | 'label' | 'data'>
@@ -24,6 +25,7 @@ function toPayload(project: FlowProject): SharePayload {
     r: project.role,
     d: project.layoutDirection,
     s: project.swimlanes || undefined,
+    l: project.laneBy === 'system' ? 'system' : undefined,
     n: project.nodes.map((n) => ({
       id: n.id,
       type: n.type,
@@ -50,6 +52,7 @@ function fromPayload(p: SharePayload): FlowProject {
     role: p.r,
     layoutDirection: p.d === 'LR' ? 'LR' : 'TB',
     swimlanes: Boolean(p.s),
+    laneBy: p.l === 'system' ? 'system' : 'department',
     nodes: p.n.map((n) => ({ ...n })),
     edges: p.e.map((e) => ({
       ...e,

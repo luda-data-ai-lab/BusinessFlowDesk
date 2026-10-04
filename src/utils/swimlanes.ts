@@ -1,5 +1,5 @@
 import { getNodesBounds, type Rect } from '@xyflow/react';
-import type { FlowNode, LayoutDirection } from '../types/flow';
+import type { FlowNode, LaneBy, LayoutDirection } from '../types/flow';
 import { nodeSize } from '../constants/nodeTypes';
 
 export const LANE_PADDING = 40;
@@ -7,15 +7,16 @@ export const LANE_HEADER = 44;
 export const UNASSIGNED_LANE = '';
 
 export interface Lane {
-  department: string;
+  /** Department or system name; empty string for unassigned nodes. */
+  key: string;
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-export function laneKey(node: FlowNode): string {
-  return node.data.department?.trim() ?? UNASSIGNED_LANE;
+export function laneKey(node: FlowNode, by: LaneBy = 'department'): string {
+  return node.data[by]?.trim() ?? UNASSIGNED_LANE;
 }
 
 export function sizeOf(node: FlowNode): { width: number; height: number } {
@@ -25,10 +26,14 @@ export function sizeOf(node: FlowNode): { width: number; height: number } {
 }
 
 /** Lane order: by the average position along the flow's cross axis (first appearance wins ties). */
-export function laneOrder(nodes: FlowNode[], direction: LayoutDirection): string[] {
+export function laneOrder(
+  nodes: FlowNode[],
+  direction: LayoutDirection,
+  by: LaneBy = 'department',
+): string[] {
   const sums = new Map<string, { sum: number; count: number; first: number }>();
   nodes.forEach((n, i) => {
-    const key = laneKey(n);
+    const key = laneKey(n, by);
     const v = direction === 'TB' ? n.position.x : n.position.y;
     const cur = sums.get(key);
     if (cur) {
@@ -46,9 +51,13 @@ export function laneOrder(nodes: FlowNode[], direction: LayoutDirection): string
  * cross axis (columns for TB, rows for LR) and boundaries between neighbours are placed
  * midway so lanes never overlap even after manual dragging.
  */
-export function computeLanes(nodes: FlowNode[], direction: LayoutDirection): Lane[] {
+export function computeLanes(
+  nodes: FlowNode[],
+  direction: LayoutDirection,
+  by: LaneBy = 'department',
+): Lane[] {
   if (nodes.length === 0) return [];
-  const order = laneOrder(nodes, direction);
+  const order = laneOrder(nodes, direction, by);
   const isTB = direction === 'TB';
 
   let mainMin = Infinity;
@@ -62,7 +71,7 @@ export function computeLanes(nodes: FlowNode[], direction: LayoutDirection): Lan
     const main1 = main0 + (isTB ? height : width);
     mainMin = Math.min(mainMin, main0);
     mainMax = Math.max(mainMax, main1);
-    const key = laneKey(n);
+    const key = laneKey(n, by);
     const ext = extents.get(key);
     if (ext) {
       ext.min = Math.min(ext.min, cross0);
@@ -94,12 +103,12 @@ export function computeLanes(nodes: FlowNode[], direction: LayoutDirection): Lan
   const mainStart = mainMin - LANE_PADDING - LANE_HEADER;
   const mainLength = mainMax - mainMin + LANE_PADDING * 2 + LANE_HEADER;
 
-  return order.map((department, i) => {
+  return order.map((key, i) => {
     const cross = starts[i];
     const crossLen = Math.max(ends[i] - starts[i], 1);
     return isTB
-      ? { department, x: cross, y: mainStart, width: crossLen, height: mainLength }
-      : { department, x: mainStart, y: cross, width: mainLength, height: crossLen };
+      ? { key, x: cross, y: mainStart, width: crossLen, height: mainLength }
+      : { key, x: mainStart, y: cross, width: mainLength, height: crossLen };
   });
 }
 
@@ -108,6 +117,7 @@ export function flowBounds(
   nodes: FlowNode[],
   swimlanes: boolean,
   direction: LayoutDirection,
+  by: LaneBy = 'department',
 ): Rect {
   const base = getNodesBounds(nodes);
   if (!swimlanes) return base;
@@ -115,7 +125,7 @@ export function flowBounds(
   let y0 = base.y;
   let x1 = base.x + base.width;
   let y1 = base.y + base.height;
-  for (const l of computeLanes(nodes, direction)) {
+  for (const l of computeLanes(nodes, direction, by)) {
     x0 = Math.min(x0, l.x);
     y0 = Math.min(y0, l.y);
     x1 = Math.max(x1, l.x + l.width);

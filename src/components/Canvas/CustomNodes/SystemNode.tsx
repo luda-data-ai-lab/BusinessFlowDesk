@@ -29,7 +29,11 @@ export const SystemNode = memo(function SystemNode({ id, data, selected }: FlowN
               {data.description}
             </p>
           )}
-          <Meta department={data.department} estimatedTime={data.estimatedTime} />
+          <Meta
+            department={data.department}
+            system={data.system}
+            estimatedTime={data.estimatedTime}
+          />
         </div>
       </div>
     </div>
