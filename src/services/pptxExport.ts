@@ -184,6 +184,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
     (n) => n.data.nodeType !== 'annotation',
   );
   const pages = Math.max(1, Math.ceil(steps.length / STEPS_PER_SLIDE));
+  const hasSystem = steps.some((n) => n.data.system?.trim());
   for (let p = 0; p < pages; p++) {
     const chunk = steps.slice(p * STEPS_PER_SLIDE, (p + 1) * STEPS_PER_SLIDE);
     const sl = pptx.addSlide();
@@ -202,7 +203,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
         lang === 'ko' ? '단계' : 'Step',
         lang === 'ko' ? '유형' : 'Type',
         s.dept,
-        s.system,
+        ...(hasSystem ? [s.system] : []),
         s.time,
         lang === 'ko' ? '다음' : 'Next',
       ].map((text) => ({
@@ -221,7 +222,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
           options: { fontSize: 10 },
         },
         { text: n.data.department ?? '', options: { fontSize: 10 } },
-        { text: n.data.system ?? '', options: { fontSize: 10 } },
+        ...(hasSystem ? [{ text: n.data.system ?? '', options: { fontSize: 10 } }] : []),
         { text: n.data.estimatedTime ?? '', options: { fontSize: 10 } },
         {
           text: branchText(n, project.edges, byId, lang),
@@ -233,7 +234,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
       x: 0.5,
       y: 1.0,
       w: SLIDE_W - 1,
-      colW: [0.5, 3.6, 1.2, 1.5, 1.5, 1.0, 3.033],
+      colW: hasSystem ? [0.5, 3.6, 1.2, 1.5, 1.5, 1.0, 3.033] : [0.5, 4.2, 1.4, 1.8, 1.2, 3.233],
       border: { type: 'solid', pt: 0.5, color: 'CBD5E1' },
       fontFace: lang === 'ko' ? 'Malgun Gothic' : 'Calibri',
       valign: 'middle',
