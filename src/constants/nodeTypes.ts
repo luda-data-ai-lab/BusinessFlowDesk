@@ -80,7 +80,7 @@ export const NODE_TYPES: NodeTypeDefinition[] = [
     icon: '⏱',
     color: '#F97316',
     category: 'advanced',
-    width: 160,
+    width: 200,
     height: 72,
   },
   {
