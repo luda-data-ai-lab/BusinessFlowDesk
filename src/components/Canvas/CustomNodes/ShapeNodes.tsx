@@ -39,7 +39,7 @@ export const TimerNode = memo(function TimerNode({ id, data, selected }: FlowNod
   const color = nodeColor(data);
   return (
     <div
-      className="group relative flex h-[72px] w-[160px] items-center gap-2 rounded-full border-2 bg-white px-4 text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100"
+      className="group relative flex h-[72px] w-[200px] items-center gap-2 rounded-full border-2 bg-white px-4 text-slate-800 shadow-sm dark:bg-slate-800 dark:text-slate-100"
       style={{ borderColor: color, ...selectionRing(selected, color) }}
     >
       <NodeHandles />
@@ -48,11 +48,11 @@ export const TimerNode = memo(function TimerNode({ id, data, selected }: FlowNod
       </span>
       <div className="min-w-0 flex-1">
         <InlineLabel id={id} label={data.label} className="truncate text-sm font-semibold" />
-        {data.estimatedTime && (
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            {data.estimatedTime}
-          </span>
-        )}
+        <Meta
+          department={data.department}
+          system={data.system}
+          estimatedTime={data.estimatedTime}
+        />
       </div>
     </div>
   );
