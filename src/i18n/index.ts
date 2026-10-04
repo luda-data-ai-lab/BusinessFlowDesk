@@ -34,6 +34,20 @@ const STRINGS = {
   exportMermaid: { ko: 'Mermaid (.mmd)', en: 'Mermaid (.mmd)' },
   exportMarkdown: { ko: 'Markdown 문서', en: 'Markdown document' },
   importJson: { ko: 'JSON 불러오기', en: 'Import JSON' },
+  testScenarios: { ko: '통합테스트 시나리오', en: 'Integration test scenarios' },
+  testScenariosHint: {
+    ko: '플로우의 정상 흐름과 각 분기 경로를 자동으로 열거해 테스트 케이스를 만듭니다. Excel 또는 Markdown으로 내려받으세요.',
+    en: 'Enumerates the happy path and every branch of the flow as test cases. Download as Excel or Markdown.',
+  },
+  testScenariosEmpty: {
+    ko: '시나리오를 만들 경로가 없어요. 시작 노드에서 이어지는 단계를 추가하세요.',
+    en: 'No paths to build scenarios from. Add steps connected from the start node.',
+  },
+  downloadXlsx: { ko: 'Excel (.xlsx) 다운로드', en: 'Download Excel (.xlsx)' },
+  downloadMd: { ko: 'Markdown 다운로드', en: 'Download Markdown' },
+  scenarioCount: { ko: '시나리오 {n}개', en: '{n} scenarios' },
+  branchCovered: { ko: '분기 커버리지 {c}/{t}', en: 'Branch coverage {c}/{t}' },
+  close: { ko: '닫기', en: 'Close' },
   templates: { ko: '템플릿 갤러리', en: 'Template gallery' },
   templatesHint: {
     ko: '자주 쓰는 업무 플로우를 골라 바로 시작하고, 프롬프트로 수정하세요.',

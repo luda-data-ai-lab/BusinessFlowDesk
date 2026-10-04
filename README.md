@@ -17,20 +17,21 @@
 - **Undo / Redo** — `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, `Ctrl/Cmd+Y`
 - **로컬 저장** — localStorage 자동 저장(1초 디바운스), 프로젝트 목록 관리
 - **내보내기 / 가져오기** — PNG, SVG, JSON, Mermaid(.mmd), Markdown 문서(단계 목록 + 흐름표 + Mermaid 블록)
+- **통합테스트 시나리오** — 플로우 경로(정상 흐름 + 각 분기)를 테스트 케이스로 자동 열거, Excel(.xlsx)/Markdown 다운로드
 - **반응형** — 데스크톱 전체 기능, 태블릿 축소 사이드바, 모바일 뷰어 전용
 - **다크 모드** — 시스템 설정 따름, 한국어/영어 UI
 
 ## 기술 스택
 
-| 영역 | 선택 |
-| --- | --- |
-| Frontend | React 18 + TypeScript + Vite 5 |
-| Canvas | `@xyflow/react` (React Flow v12) |
-| State | Zustand 4 |
-| Styling | Tailwind CSS 3 |
-| Layout | `@dagrejs/dagre` |
-| Export | `html-to-image`, `file-saver` |
-| AI | Claude API (`claude-sonnet-4-6`) via Vercel Serverless Function |
+| 영역     | 선택                                                            |
+| -------- | --------------------------------------------------------------- |
+| Frontend | React 18 + TypeScript + Vite 5                                  |
+| Canvas   | `@xyflow/react` (React Flow v12)                                |
+| State    | Zustand 4                                                       |
+| Styling  | Tailwind CSS 3                                                  |
+| Layout   | `@dagrejs/dagre`                                                |
+| Export   | `html-to-image`, `file-saver`                                   |
+| AI       | Claude API (`claude-sonnet-4-6`) via Vercel Serverless Function |
 
 ## 시작하기
 
@@ -46,14 +47,14 @@ API 키는 서버(Vite dev 미들웨어 / Vercel Function)에서만 사용되며
 
 ### 스크립트
 
-| 명령 | 설명 |
-| --- | --- |
-| `pnpm dev` | 개발 서버 (`/api/generate` 포함) |
-| `pnpm build` | 타입체크 + 프로덕션 빌드 |
-| `pnpm preview` | 빌드 결과 미리보기 |
-| `pnpm lint` | ESLint |
-| `pnpm typecheck` | `tsc -b` |
-| `pnpm format` | Prettier |
+| 명령             | 설명                             |
+| ---------------- | -------------------------------- |
+| `pnpm dev`       | 개발 서버 (`/api/generate` 포함) |
+| `pnpm build`     | 타입체크 + 프로덕션 빌드         |
+| `pnpm preview`   | 빌드 결과 미리보기               |
+| `pnpm lint`      | ESLint                           |
+| `pnpm typecheck` | `tsc -b`                         |
+| `pnpm format`    | Prettier                         |
 
 ## 프로젝트 구조
 

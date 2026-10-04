@@ -6,7 +6,7 @@ import type { FlowProject } from '../types/flow';
 const PADDING = 48;
 const MAX_DIMENSION = 8192;
 
-function fileStem(title: string): string {
+export function fileStem(title: string): string {
   const date = new Date().toISOString().slice(0, 10);
   const safe =
     title

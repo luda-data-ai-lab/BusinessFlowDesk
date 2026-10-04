@@ -107,6 +107,8 @@ export interface FlowState {
   applyTemplate: (flow: AIFlowResponse) => void;
   templateGalleryOpen: boolean;
   setTemplateGalleryOpen: (open: boolean) => void;
+  testScenarioOpen: boolean;
+  setTestScenarioOpen: (open: boolean) => void;
   toProject: () => FlowProject;
   refreshProjects: () => void;
   clearError: () => void;
@@ -595,6 +597,8 @@ export const useFlowStore = create<FlowState>((set, get) => {
 
     templateGalleryOpen: false,
     setTemplateGalleryOpen: (open) => set({ templateGalleryOpen: open }),
+    testScenarioOpen: false,
+    setTestScenarioOpen: (open) => set({ testScenarioOpen: open }),
 
     applyTemplate: (flow) => {
       get().newProject();
