@@ -32,6 +32,8 @@ import type { BusinessSystem } from '../types/system';
 import {
   canonicalSystemName,
   loadSystems,
+  MAX_SYSTEMS,
+  MAX_SYSTEM_NAME,
   newSystemId,
   nextSystemColor,
   saveSystems,
@@ -638,8 +640,9 @@ export const useFlowStore = create<FlowState>((set, get) => {
     systemCatalogOpen: false,
     setSystemCatalogOpen: (open) => set({ systemCatalogOpen: open }),
     addSystem: (input) => {
-      const name = input.name.trim();
+      const name = input.name.trim().slice(0, MAX_SYSTEM_NAME);
       const { systems } = get();
+      if (systems.length >= MAX_SYSTEMS) return null;
       if (!name || systems.some((s) => s.name.toLowerCase() === name.toLowerCase())) return null;
       const system: BusinessSystem = {
         id: newSystemId(),
@@ -658,7 +661,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
       const { systems, nodes } = get();
       const prev = systems.find((s) => s.id === id);
       if (!prev) return;
-      const name = patch.name?.trim() || prev.name;
+      const name = patch.name?.trim().slice(0, MAX_SYSTEM_NAME) || prev.name;
       const next = systems.map((s) => (s.id === id ? { ...s, ...patch, name } : s));
       saveSystems(next);
       const renamed = name !== prev.name;
