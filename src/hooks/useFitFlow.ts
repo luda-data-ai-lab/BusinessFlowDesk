@@ -17,9 +17,9 @@ export function useFitFlow() {
   const storeApi = useStoreApi();
   return useCallback(
     (duration = 300, readable = true) => {
-      const { nodes, swimlanes, layoutDirection } = useFlowStore.getState();
+      const { nodes, swimlanes, laneBy, layoutDirection } = useFlowStore.getState();
       if (nodes.length === 0) return;
-      const bounds = flowBounds(nodes, swimlanes, layoutDirection);
+      const bounds = flowBounds(nodes, swimlanes, layoutDirection, laneBy);
       const { width, height } = storeApi.getState();
       if (!readable || !width || !height) {
         fitBounds(bounds, { padding: PADDING, duration });

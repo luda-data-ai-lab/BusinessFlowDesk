@@ -9,6 +9,7 @@ interface TemplateNode {
   type: NodeType;
   label: L;
   department?: L;
+  system?: L;
   estimatedTime?: string;
   description?: L;
 }
@@ -37,12 +38,13 @@ const n = (
   type: NodeType,
   ko: string,
   en: string,
-  extra: Partial<Omit<TemplateNode, 'id' | 'type' | 'label'>> & { dept?: L } = {},
+  extra: Partial<Omit<TemplateNode, 'id' | 'type' | 'label'>> & { dept?: L; sys?: L } = {},
 ): TemplateNode => ({
   id,
   type,
   label: { ko, en },
   department: extra.dept,
+  system: extra.sys,
   estimatedTime: extra.estimatedTime,
   description: extra.description,
 });
@@ -67,6 +69,18 @@ const D = {
   client: { ko: '고객사', en: 'Client' },
 };
 
+const S = {
+  shop: { ko: '쇼핑몰', en: 'Storefront' },
+  erp: { ko: 'ERP', en: 'ERP' },
+  wms: { ko: 'WMS', en: 'WMS' },
+  pg: { ko: '결제 PG', en: 'Payment gateway' },
+  msg: { ko: '알림톡/SMS', en: 'Messaging' },
+  git: { ko: 'GitHub', en: 'GitHub' },
+  ci: { ko: 'CI 서버', en: 'CI server' },
+  k8s: { ko: 'Kubernetes', en: 'Kubernetes' },
+  apm: { ko: 'APM/모니터링', en: 'APM / monitoring' },
+};
+
 export const FLOW_TEMPLATES: FlowTemplate[] = [
   {
     id: 'order-to-delivery',
@@ -78,22 +92,38 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     roles: ['operations', 'executive'],
     nodes: [
-      n('s', 'start', '주문 접수', 'Order received'),
+      n('s', 'start', '주문 접수', 'Order received', { sys: S.shop }),
       n('t1', 'task', '주문 정보 확인', 'Validate order', {
         dept: D.sales,
+        sys: S.erp,
         estimatedTime: '10min',
       }),
-      n('d1', 'decision', '재고 있음?', 'In stock?', { dept: D.ops }),
+      n('d1', 'decision', '재고 있음?', 'In stock?', { dept: D.ops, sys: S.wms }),
       n('t2', 'task', '입고 요청 / 고객 안내', 'Backorder & notify customer', {
         dept: D.ops,
+        sys: S.erp,
         estimatedTime: '1d',
       }),
-      n('t3', 'system', '결제 승인 (PG)', 'Payment authorization (PG)', { dept: D.finance }),
-      n('d2', 'decision', '결제 성공?', 'Payment ok?', { dept: D.finance }),
-      n('t4', 'task', '결제 실패 안내', 'Payment failure notice', { dept: D.cs }),
-      n('t5', 'task', '피킹 · 패킹', 'Pick & pack', { dept: D.logistics, estimatedTime: '2h' }),
-      n('t6', 'task', '택배 출고', 'Ship via carrier', { dept: D.logistics, estimatedTime: '1d' }),
-      n('t7', 'system', '배송 완료 알림 발송', 'Send delivery notification', { dept: D.cs }),
+      n('t3', 'system', '결제 승인 (PG)', 'Payment authorization (PG)', {
+        dept: D.finance,
+        sys: S.pg,
+      }),
+      n('d2', 'decision', '결제 성공?', 'Payment ok?', { dept: D.finance, sys: S.pg }),
+      n('t4', 'task', '결제 실패 안내', 'Payment failure notice', { dept: D.cs, sys: S.msg }),
+      n('t5', 'task', '피킹 · 패킹', 'Pick & pack', {
+        dept: D.logistics,
+        sys: S.wms,
+        estimatedTime: '2h',
+      }),
+      n('t6', 'task', '택배 출고', 'Ship via carrier', {
+        dept: D.logistics,
+        sys: S.wms,
+        estimatedTime: '1d',
+      }),
+      n('t7', 'system', '배송 완료 알림 발송', 'Send delivery notification', {
+        dept: D.cs,
+        sys: S.msg,
+      }),
       n('e', 'end', '완료', 'Done'),
     ],
     edges: [
@@ -253,27 +283,32 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     roles: ['developer'],
     nodes: [
-      n('s', 'start', 'PR 생성', 'Open PR'),
+      n('s', 'start', 'PR 생성', 'Open PR', { sys: S.git }),
       n('t1', 'system', 'CI: 린트 · 테스트 · 빌드', 'CI: lint, test, build', {
         dept: D.devops,
+        sys: S.ci,
         estimatedTime: '10min',
       }),
-      n('d1', 'decision', 'CI 통과?', 'CI green?', { dept: D.devops }),
-      n('t2', 'task', '수정 후 재푸시', 'Fix & push', { dept: D.dev }),
-      n('t3', 'task', '코드 리뷰', 'Code review', { dept: D.dev, estimatedTime: '1d' }),
-      n('d2', 'decision', '승인?', 'Approved?', { dept: D.dev }),
+      n('d1', 'decision', 'CI 통과?', 'CI green?', { dept: D.devops, sys: S.ci }),
+      n('t2', 'task', '수정 후 재푸시', 'Fix & push', { dept: D.dev, sys: S.git }),
+      n('t3', 'task', '코드 리뷰', 'Code review', { dept: D.dev, sys: S.git, estimatedTime: '1d' }),
+      n('d2', 'decision', '승인?', 'Approved?', { dept: D.dev, sys: S.git }),
       n('t4', 'system', 'main 머지 · 스테이징 배포', 'Merge & deploy to staging', {
         dept: D.devops,
+        sys: S.k8s,
       }),
       n('t5', 'task', '스테이징 검증 (QA)', 'Staging verification', {
         dept: D.qa,
         estimatedTime: '2h',
       }),
       n('d3', 'decision', '프로덕션 배포 승인?', 'Approve production?', { dept: D.pm }),
-      n('t6', 'system', '프로덕션 배포 (카나리)', 'Production deploy (canary)', { dept: D.devops }),
-      n('t7', 'timer', '30분 모니터링', 'Monitor for 30 min', { dept: D.devops }),
-      n('d4', 'decision', '에러율 정상?', 'Error rate normal?', { dept: D.devops }),
-      n('t8', 'task', '롤백', 'Rollback', { dept: D.devops }),
+      n('t6', 'system', '프로덕션 배포 (카나리)', 'Production deploy (canary)', {
+        dept: D.devops,
+        sys: S.k8s,
+      }),
+      n('t7', 'timer', '30분 모니터링', 'Monitor for 30 min', { dept: D.devops, sys: S.apm }),
+      n('d4', 'decision', '에러율 정상?', 'Error rate normal?', { dept: D.devops, sys: S.apm }),
+      n('t8', 'task', '롤백', 'Rollback', { dept: D.devops, sys: S.k8s }),
       n('e', 'end', '배포 완료', 'Released'),
     ],
     edges: [
@@ -504,6 +539,7 @@ export function templateToFlow(tpl: FlowTemplate, lang: Language): AIFlowRespons
       type: node.type,
       label: node.label[lang],
       department: node.department?.[lang],
+      system: node.system?.[lang],
       estimatedTime: node.estimatedTime,
       description: node.description?.[lang],
     })),

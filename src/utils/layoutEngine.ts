@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre';
-import type { FlowEdge, FlowNode, LayoutDirection } from '../types/flow';
+import type { FlowEdge, FlowNode, LaneBy, LayoutDirection } from '../types/flow';
 import { nodeSize } from '../constants/nodeTypes';
 import { laneKey, sizeOf } from './swimlanes';
 
@@ -12,14 +12,20 @@ interface LayoutOptions {
   direction?: LayoutDirection;
   /** When true, nodes with `data.pinned` keep their current position. */
   respectPinned?: boolean;
-  /** Group nodes into department lanes along the cross axis. */
+  /** Group nodes into lanes along the cross axis. */
   swimlanes?: boolean;
+  laneBy?: LaneBy;
 }
 
 export function layoutFlow(
   nodes: FlowNode[],
   edges: FlowEdge[],
-  { direction = 'TB', respectPinned = true, swimlanes = false }: LayoutOptions = {},
+  {
+    direction = 'TB',
+    respectPinned = true,
+    swimlanes = false,
+    laneBy = 'department',
+  }: LayoutOptions = {},
 ): FlowNode[] {
   if (nodes.length === 0) return nodes;
 
@@ -61,17 +67,18 @@ export function layoutFlow(
     };
   });
 
-  return swimlanes ? applySwimlanes(laidOut, direction, respectPinned) : laidOut;
+  return swimlanes ? applySwimlanes(laidOut, direction, respectPinned, laneBy) : laidOut;
 }
 
 /**
- * Re-distribute dagre output along the cross axis so every department occupies its own lane.
+ * Re-distribute dagre output along the cross axis so every department/system occupies its own lane.
  * Lane order follows the average cross-axis position dagre chose, keeping edges short.
  */
 function applySwimlanes(
   nodes: FlowNode[],
   direction: LayoutDirection,
   respectPinned: boolean,
+  laneBy: LaneBy,
 ): FlowNode[] {
   const isTB = direction === 'TB';
   const cross = (n: FlowNode) => (isTB ? n.position.x : n.position.y);
@@ -80,7 +87,7 @@ function applySwimlanes(
 
   const lanes = new Map<string, { nodes: FlowNode[]; sum: number; maxCross: number }>();
   for (const n of nodes) {
-    const key = laneKey(n);
+    const key = laneKey(n, laneBy);
     const lane = lanes.get(key) ?? { nodes: [], sum: 0, maxCross: 0 };
     lane.nodes.push(n);
     lane.sum += cross(n) + crossSize(n) / 2;

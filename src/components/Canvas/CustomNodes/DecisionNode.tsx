@@ -23,9 +23,9 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: F
           label={data.label}
           className="text-[12px] font-semibold leading-snug text-slate-800 dark:text-slate-100"
         />
-        {data.department && (
+        {(data.department || data.system) && (
           <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-            {data.department}
+            {[data.department, data.system && `🖥 ${data.system}`].filter(Boolean).join(' · ')}
           </span>
         )}
       </div>

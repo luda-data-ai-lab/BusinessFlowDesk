@@ -5,6 +5,7 @@ import type { FlowEdge, FlowNode, FlowProject } from '../types/flow';
 import type { Language } from '../i18n';
 import { NODE_TYPE_MAP } from '../constants/nodeTypes';
 import { ROLE_MAP } from '../constants/roles';
+import { systemMatrix } from './textExport';
 
 const PADDING = 48;
 const MAX_DIMENSION = 4096;
@@ -15,8 +16,30 @@ const YES_WORDS = ['예', 'Yes'];
 const DEFAULT_YES_NO = [...YES_WORDS, '아니오', 'No'];
 
 const STR = {
-  ko: { steps: '단계 목록', role: '직군', yes: '예', no: '아니오', dept: '담당', time: '소요' },
-  en: { steps: 'Steps', role: 'Role', yes: 'Yes', no: 'No', dept: 'Owner', time: 'Time' },
+  ko: {
+    steps: '단계 목록',
+    role: '직군',
+    yes: '예',
+    no: '아니오',
+    dept: '담당',
+    time: '소요',
+    system: '시스템',
+    systems: '시스템별 단계',
+    noSystem: '수작업 / 시스템 없음',
+    stepCount: '단계 수',
+  },
+  en: {
+    steps: 'Steps',
+    role: 'Role',
+    yes: 'Yes',
+    no: 'No',
+    dept: 'Owner',
+    time: 'Time',
+    system: 'System',
+    systems: 'Steps by system',
+    noSystem: 'Manual / no system',
+    stepCount: 'Steps',
+  },
 };
 
 function isDarkMode() {
@@ -179,6 +202,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
         lang === 'ko' ? '단계' : 'Step',
         lang === 'ko' ? '유형' : 'Type',
         s.dept,
+        s.system,
         s.time,
         lang === 'ko' ? '다음' : 'Next',
       ].map((text) => ({
@@ -197,6 +221,7 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
           options: { fontSize: 10 },
         },
         { text: n.data.department ?? '', options: { fontSize: 10 } },
+        { text: n.data.system ?? '', options: { fontSize: 10 } },
         { text: n.data.estimatedTime ?? '', options: { fontSize: 10 } },
         {
           text: branchText(n, project.edges, byId, lang),
@@ -208,11 +233,53 @@ export async function exportFlowAsPptx(project: FlowProject, bounds: Rect, lang:
       x: 0.5,
       y: 1.0,
       w: SLIDE_W - 1,
-      colW: [0.5, 4.2, 1.4, 1.8, 1.2, 3.233],
+      colW: [0.5, 3.6, 1.2, 1.5, 1.5, 1.0, 3.033],
       border: { type: 'solid', pt: 0.5, color: 'CBD5E1' },
       fontFace: lang === 'ko' ? 'Malgun Gothic' : 'Calibri',
       valign: 'middle',
       autoPage: false,
+    });
+  }
+
+  // Optional last slide: system × steps matrix
+  const matrix = systemMatrix(steps);
+  if (matrix.length > 0) {
+    const sl = pptx.addSlide();
+    sl.addText(s.systems, {
+      x: 0.5,
+      y: 0.25,
+      w: SLIDE_W - 1,
+      h: 0.6,
+      fontSize: 22,
+      bold: true,
+      color: '0F172A',
+    });
+    const stepNo = new Map(steps.map((n, i) => [n.id, i + 1]));
+    const rows: PptxGenJS.TableRow[] = [
+      [s.system, s.stepCount, s.steps].map((text) => ({
+        text,
+        options: { bold: true, color: 'FFFFFF', fill: { color: '7C3AED' }, fontSize: 11 },
+      })),
+    ];
+    for (const row of matrix) {
+      rows.push([
+        { text: row.system || s.noSystem, options: { fontSize: 11, bold: true } },
+        { text: String(row.nodes.length), options: { fontSize: 11, align: 'center' } },
+        {
+          text: row.nodes.map((n) => `${stepNo.get(n.id)}. ${n.data.label}`).join('\n'),
+          options: { fontSize: 10 },
+        },
+      ]);
+    }
+    sl.addTable(rows, {
+      x: 0.5,
+      y: 1.0,
+      w: SLIDE_W - 1,
+      colW: [2.8, 1.2, 8.333],
+      border: { type: 'solid', pt: 0.5, color: 'CBD5E1' },
+      fontFace: lang === 'ko' ? 'Malgun Gothic' : 'Calibri',
+      valign: 'top',
+      autoPage: true,
     });
   }
 

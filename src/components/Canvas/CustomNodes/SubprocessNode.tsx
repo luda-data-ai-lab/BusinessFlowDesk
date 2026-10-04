@@ -48,7 +48,11 @@ export const SubprocessNode = memo(function SubprocessNode({ id, data, selected 
                 {data.description}
               </p>
             )}
-            <Meta department={data.department} estimatedTime={data.estimatedTime} />
+            <Meta
+              department={data.department}
+              system={data.system}
+              estimatedTime={data.estimatedTime}
+            />
           </>
         )}
       </div>

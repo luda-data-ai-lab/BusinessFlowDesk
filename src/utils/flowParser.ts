@@ -72,6 +72,7 @@ export function aiNodeToFlowNode(n: AIFlowNode, existing?: FlowNode): FlowNode {
       label: n.label?.trim() || NODE_TYPE_MAP[nodeType].label.ko,
       description: n.description?.trim() || undefined,
       department: n.department?.trim() || undefined,
+      system: n.system?.trim() || undefined,
       estimatedTime: n.estimatedTime?.trim() || undefined,
       nodeType,
       color: existing?.data.color,
@@ -160,6 +161,7 @@ export function toAIFlow(nodes: FlowNode[], edges: FlowEdge[], title?: string): 
       label: n.data.label,
       description: n.data.description,
       department: n.data.department,
+      system: n.data.system,
       estimatedTime: n.data.estimatedTime,
     })),
     edges: edges.map((e) => ({

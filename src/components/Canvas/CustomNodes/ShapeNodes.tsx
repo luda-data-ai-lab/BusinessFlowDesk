@@ -23,7 +23,11 @@ export const DataNode = memo(function DataNode({ id, data, selected }: FlowNodeP
         </span>
         <div className="min-w-0 flex-1">
           <InlineLabel id={id} label={data.label} className="truncate text-sm font-semibold" />
-          <Meta department={data.department} estimatedTime={data.estimatedTime} />
+          <Meta
+            department={data.department}
+            system={data.system}
+            estimatedTime={data.estimatedTime}
+          />
         </div>
       </div>
     </div>

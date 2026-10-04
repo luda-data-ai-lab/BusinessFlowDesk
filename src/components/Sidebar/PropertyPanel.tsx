@@ -25,11 +25,13 @@ function DebouncedText({
   onCommit,
   multiline = false,
   placeholder,
+  list,
 }: {
   value: string;
   onCommit: (v: string) => void;
   multiline?: boolean;
   placeholder?: string;
+  list?: string;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
@@ -52,6 +54,7 @@ function DebouncedText({
       className={inputClass}
       value={draft}
       placeholder={placeholder}
+      list={list}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
@@ -66,7 +69,9 @@ function NodeProperties({ id }: { id: string }) {
   const updateNodeData = useFlowStore((s) => s.updateNodeData);
   const changeNodeType = useFlowStore((s) => s.changeNodeType);
   const deleteNode = useFlowStore((s) => s.deleteNode);
+  const systems = useFlowStore((s) => s.nodes.map((n) => n.data.system?.trim()).filter(Boolean));
   if (!node) return null;
+  const systemOptions = [...new Set(systems)] as string[];
   const data = node.data;
   const color = data.color || NODE_TYPE_MAP[data.nodeType].color;
   const set = (patch: Partial<FlowNodeData>) => updateNodeData(id, patch);
@@ -111,6 +116,19 @@ function NodeProperties({ id }: { id: string }) {
           />
         </Field>
       </div>
+      <Field label={t('system')}>
+        <DebouncedText
+          value={data.system ?? ''}
+          onCommit={(v) => set({ system: v || undefined })}
+          placeholder={t('systemPlaceholder')}
+          list="bfd-system-options"
+        />
+        <datalist id="bfd-system-options">
+          {systemOptions.map((sys) => (
+            <option key={sys} value={sys} />
+          ))}
+        </datalist>
+      </Field>
       <Field label={t('color')}>
         <div className="flex items-center gap-2">
           <input

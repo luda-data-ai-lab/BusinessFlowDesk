@@ -23,6 +23,25 @@ const DEPARTMENTS: Record<RoleType, string[]> = {
   consultant: ['고객', '영업 레인', '운영 레인', '시스템 레인', '관리 레인'],
 };
 
+const SYSTEMS: Record<RoleType, string[]> = {
+  operations: ['ERP', 'CRM', '그룹웨어', 'WMS'],
+  pm: ['Jira', 'Confluence', 'Figma', 'GitHub'],
+  developer: ['API Gateway', 'Auth Service', 'Backend', 'PostgreSQL', 'Message Queue'],
+  executive: ['BI 대시보드', 'ERP', '그룹웨어'],
+  consultant: ['ERP', 'CRM', '레거시 시스템', '사내 포털'],
+};
+
+/** Demo heuristic: steps that mention a system or are system/data typed get a system tag. */
+function pickSystem(step: string, type: AIFlowNode['type'], role: RoleType, i: number) {
+  const list = SYSTEMS[role];
+  const named = step.match(/\b(erp|crm|wms|mes|pos|sap|jira|slack|github|salesforce)\b/i);
+  if (named) return named[1].toUpperCase();
+  if (type === 'system' || type === 'data' || SYSTEM_HINTS.test(step)) {
+    return list[i % list.length];
+  }
+  return undefined;
+}
+
 const TIMES: Record<RoleType, string[]> = {
   operations: ['30min', '1h', '2h', '4h', '1d'],
   pm: ['1d', '3d', '1w', '2w'],
@@ -93,6 +112,7 @@ export function generateMockFlow(
       label: type === 'decision' ? `${step}?` : step,
       description: type === 'decision' ? `${step} 결과에 따라 분기` : `${step} 단계`,
       department: departments[i % departments.length],
+      system: pickSystem(step, type, role, i),
       estimatedTime: times[i % times.length],
     });
     edges.push({ source: prev, target: id, label: '' });

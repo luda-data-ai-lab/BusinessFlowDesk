@@ -9,6 +9,10 @@ const STRINGS = {
   steps: { ko: '단계', en: 'Steps' },
   transitions: { ko: '흐름', en: 'Transitions' },
   department: { ko: '담당', en: 'Owner' },
+  system: { ko: '시스템', en: 'System' },
+  systems: { ko: '시스템별 단계', en: 'Steps by system' },
+  noSystem: { ko: '수작업 / 시스템 없음', en: 'Manual / no system' },
+  stepCount: { ko: '단계 수', en: 'Steps' },
   time: { ko: '소요', en: 'Time' },
   type: { ko: '유형', en: 'Type' },
   yes: { ko: '예', en: 'Yes' },
@@ -96,6 +100,20 @@ export function toMermaid(
   return lines.join('\n');
 }
 
+/** Groups non-annotation steps by system (first-appearance order); empty when no node has a system. */
+export function systemMatrix(ordered: FlowNode[]): Array<{ system: string; nodes: FlowNode[] }> {
+  const steps = ordered.filter((n) => n.data.nodeType !== 'annotation');
+  if (!steps.some((n) => n.data.system?.trim())) return [];
+  const groups = new Map<string, FlowNode[]>();
+  for (const n of steps) {
+    const key = n.data.system?.trim() ?? '';
+    groups.set(key, [...(groups.get(key) ?? []), n]);
+  }
+  return [...groups.entries()]
+    .sort((a, b) => Number(a[0] === '') - Number(b[0] === ''))
+    .map(([system, nodes]) => ({ system, nodes }));
+}
+
 export function toMarkdown(project: FlowProject, lang: Language): string {
   const { nodes, edges } = project;
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -112,6 +130,7 @@ export function toMarkdown(project: FlowProject, lang: Language): string {
     const def = NODE_TYPE_MAP[n.data.nodeType];
     const meta: string[] = [`${s('type', lang)}: ${def?.label[lang] ?? n.data.nodeType}`];
     if (n.data.department) meta.push(`${s('department', lang)}: ${n.data.department}`);
+    if (n.data.system) meta.push(`${s('system', lang)}: ${n.data.system}`);
     if (n.data.estimatedTime) meta.push(`${s('time', lang)}: ${n.data.estimatedTime}`);
     out.push(`${i + 1}. **${n.data.label}** — ${meta.join(' · ')}`);
     if (n.data.description?.trim()) out.push(`   ${n.data.description.trim()}`);
@@ -124,6 +143,21 @@ export function toMarkdown(project: FlowProject, lang: Language): string {
       }
     }
   });
+
+  const matrix = systemMatrix(ordered);
+  if (matrix.length > 0) {
+    out.push(
+      '',
+      `## ${s('systems', lang)}`,
+      '',
+      `| ${s('system', lang)} | ${s('stepCount', lang)} | ${s('steps', lang)} |`,
+      '|---|---|---|',
+    );
+    for (const row of matrix) {
+      const steps = row.nodes.map((n) => `${n.data.label} (#${index.get(n.id) ?? '?'})`).join(', ');
+      out.push(`| ${row.system || s('noSystem', lang)} | ${row.nodes.length} | ${steps} |`);
+    }
+  }
 
   out.push(
     '',

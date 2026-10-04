@@ -32,8 +32,8 @@ export function useExport() {
 
   const title = () => useFlowStore.getState().projectTitle || 'flow';
   const bounds = () => {
-    const { nodes, swimlanes, layoutDirection } = useFlowStore.getState();
-    return flowBounds(nodes, swimlanes, layoutDirection);
+    const { nodes, swimlanes, laneBy, layoutDirection } = useFlowStore.getState();
+    return flowBounds(nodes, swimlanes, layoutDirection, laneBy);
   };
 
   return {

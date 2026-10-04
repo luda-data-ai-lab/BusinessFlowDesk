@@ -42,7 +42,8 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const toggleDirection = useFlowStore((s) => s.toggleDirection);
   const direction = useFlowStore((s) => s.layoutDirection);
   const swimlanes = useFlowStore((s) => s.swimlanes);
-  const toggleSwimlanes = useFlowStore((s) => s.toggleSwimlanes);
+  const laneBy = useFlowStore((s) => s.laneBy);
+  const setSwimlanes = useFlowStore((s) => s.setSwimlanes);
   const nodeCount = useFlowStore((s) => s.nodes.length);
   const edgeCount = useFlowStore((s) => s.edges.length);
 
@@ -73,11 +74,19 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
           </ToolButton>
           <ToolButton
             label={t('swimlanes')}
-            onClick={toggleSwimlanes}
-            active={swimlanes}
+            onClick={() => setSwimlanes(swimlanes && laneBy === 'department' ? null : 'department')}
+            active={swimlanes && laneBy === 'department'}
             disabled={nodeCount === 0}
           >
             <span className="text-xs font-semibold">{direction === 'TB' ? '▥' : '▤'}</span>
+          </ToolButton>
+          <ToolButton
+            label={t('systemLanes')}
+            onClick={() => setSwimlanes(swimlanes && laneBy === 'system' ? null : 'system')}
+            active={swimlanes && laneBy === 'system'}
+            disabled={nodeCount === 0}
+          >
+            <span className="text-xs">🖥</span>
           </ToolButton>
           <span className="mx-1 h-5 w-px bg-border dark:bg-slate-600" />
         </>
