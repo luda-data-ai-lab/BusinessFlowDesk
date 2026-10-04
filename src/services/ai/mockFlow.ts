@@ -32,10 +32,18 @@ const SYSTEMS: Record<RoleType, string[]> = {
 };
 
 /** Demo heuristic: steps that mention a system or are system/data typed get a system tag. */
-function pickSystem(step: string, type: AIFlowNode['type'], role: RoleType, i: number) {
-  const list = SYSTEMS[role];
+function pickSystem(
+  step: string,
+  type: AIFlowNode['type'],
+  role: RoleType,
+  i: number,
+  registered: string[] = [],
+) {
+  const mentioned = registered.find((s) => step.toLowerCase().includes(s.toLowerCase()));
+  if (mentioned) return mentioned;
+  const list = registered.length ? registered : SYSTEMS[role];
   const named = step.match(/\b(erp|crm|wms|mes|pos|sap|jira|slack|github|salesforce)\b/i);
-  if (named) return named[1].toUpperCase();
+  if (named && !registered.length) return named[1].toUpperCase();
   if (type === 'system' || type === 'data' || SYSTEM_HINTS.test(step)) {
     return list[i % list.length];
   }
@@ -86,6 +94,7 @@ export function generateMockFlow(
   prompt: string,
   role: RoleType,
   existing: AIFlowResponse | null,
+  registered: string[] = [],
 ): AIFlowResponse {
   if (existing && existing.nodes.length > 0) return modifyMockFlow(prompt, role, existing);
 
@@ -112,7 +121,7 @@ export function generateMockFlow(
       label: type === 'decision' ? `${step}?` : step,
       description: type === 'decision' ? `${step} 결과에 따라 분기` : `${step} 단계`,
       department: departments[i % departments.length],
-      system: pickSystem(step, type, role, i),
+      system: pickSystem(step, type, role, i, registered),
       estimatedTime: times[i % times.length],
     });
     edges.push({ source: prev, target: id, label: '' });

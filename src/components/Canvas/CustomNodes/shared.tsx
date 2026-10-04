@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { FlowNode } from '../../../types/flow';
 import { useFlowStore } from '../../../hooks/useFlowStore';
+import { findSystem } from '../../../services/systemCatalog';
 
 export type FlowNodeProps = NodeProps<FlowNode>;
 
@@ -124,6 +125,7 @@ export function Meta({
   system?: string;
   estimatedTime?: string;
 }) {
+  const color = useFlowStore((s) => findSystem(s.systems, system)?.color);
   if (!department && !system && !estimatedTime) return null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] leading-none text-slate-500 dark:text-slate-400">
@@ -135,6 +137,7 @@ export function Meta({
       {system && (
         <span
           className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-200"
+          style={color ? { color, borderColor: `${color}66`, background: `${color}1A` } : undefined}
           title="System"
         >
           🖥 {system}

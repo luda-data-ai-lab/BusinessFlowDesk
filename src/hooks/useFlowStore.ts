@@ -28,6 +28,14 @@ import { layoutFlow } from '../utils/layoutEngine';
 import { computeLanes, laneAtPosition, sizeOf } from '../utils/swimlanes';
 import { newId, parseAIFlow, toAIFlow } from '../utils/flowParser';
 import { generateFlow } from '../services/ai/generateFlow';
+import type { BusinessSystem } from '../types/system';
+import {
+  canonicalSystemName,
+  loadSystems,
+  newSystemId,
+  nextSystemColor,
+  saveSystems,
+} from '../services/systemCatalog';
 import { modifyFlow } from '../services/ai/modifyFlow';
 import {
   isOnboarded,
@@ -38,6 +46,21 @@ import {
   saveRole,
   upsertProject,
 } from '../services/storage';
+
+function canonicalizeSystems<T extends { nodes: FlowNode[] }>(
+  parsed: T,
+  systems: BusinessSystem[],
+): T {
+  if (systems.length === 0) return parsed;
+  return {
+    ...parsed,
+    nodes: parsed.nodes.map((n) =>
+      n.data.system
+        ? { ...n, data: { ...n.data, system: canonicalSystemName(systems, n.data.system) } }
+        : n,
+    ),
+  };
+}
 
 const HISTORY_LIMIT = 100;
 
@@ -107,6 +130,17 @@ export interface FlowState {
   applyTemplate: (flow: AIFlowResponse) => void;
   templateGalleryOpen: boolean;
   setTemplateGalleryOpen: (open: boolean) => void;
+  /** System catalog shared by every flow in this browser. */
+  systems: BusinessSystem[];
+  systemCatalogOpen: boolean;
+  setSystemCatalogOpen: (open: boolean) => void;
+  addSystem: (
+    input: Omit<BusinessSystem, 'id' | 'color'> & { color?: string },
+  ) => BusinessSystem | null;
+  updateSystem: (id: string, patch: Partial<Omit<BusinessSystem, 'id'>>) => void;
+  removeSystem: (id: string) => void;
+  /** Registers every system name used in the current flow that isn't in the catalog yet. */
+  registerSystemsFromFlow: () => number;
   testScenarioOpen: boolean;
   setTestScenarioOpen: (open: boolean) => void;
   toProject: () => FlowProject;
@@ -423,8 +457,9 @@ export const useFlowStore = create<FlowState>((set, get) => {
           get().currentRole,
           language,
           abortController.signal,
+          get().systems.map((s) => s.name),
         );
-        const parsed = parseAIFlow(result.flow);
+        const parsed = canonicalizeSystems(parseAIFlow(result.flow), get().systems);
         applyGenerated(
           { ...parsed, title: parsed.title ?? prompt.slice(0, 40) },
           result.mock,
@@ -449,8 +484,9 @@ export const useFlowStore = create<FlowState>((set, get) => {
           toAIFlow(nodes, edges, projectTitle),
           language,
           abortController.signal,
+          get().systems.map((s) => s.name),
         );
-        const parsed = parseAIFlow(result.flow, nodes);
+        const parsed = canonicalizeSystems(parseAIFlow(result.flow, nodes), get().systems);
         applyGenerated(parsed, result.mock, true);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -597,6 +633,63 @@ export const useFlowStore = create<FlowState>((set, get) => {
 
     templateGalleryOpen: false,
     setTemplateGalleryOpen: (open) => set({ templateGalleryOpen: open }),
+
+    systems: loadSystems(),
+    systemCatalogOpen: false,
+    setSystemCatalogOpen: (open) => set({ systemCatalogOpen: open }),
+    addSystem: (input) => {
+      const name = input.name.trim();
+      const { systems } = get();
+      if (!name || systems.some((s) => s.name.toLowerCase() === name.toLowerCase())) return null;
+      const system: BusinessSystem = {
+        id: newSystemId(),
+        name,
+        category: input.category,
+        description: input.description?.trim() || undefined,
+        owner: input.owner?.trim() || undefined,
+        color: input.color ?? nextSystemColor(systems),
+      };
+      const next = [...systems, system];
+      saveSystems(next);
+      set({ systems: next });
+      return system;
+    },
+    updateSystem: (id, patch) => {
+      const { systems, nodes } = get();
+      const prev = systems.find((s) => s.id === id);
+      if (!prev) return;
+      const name = patch.name?.trim() || prev.name;
+      const next = systems.map((s) => (s.id === id ? { ...s, ...patch, name } : s));
+      saveSystems(next);
+      const renamed = name !== prev.name;
+      set({
+        systems: next,
+        nodes: renamed
+          ? nodes.map((n) =>
+              n.data.system?.trim().toLowerCase() === prev.name.toLowerCase()
+                ? { ...n, data: { ...n.data, system: name } }
+                : n,
+            )
+          : nodes,
+      });
+    },
+    removeSystem: (id) => {
+      const next = get().systems.filter((s) => s.id !== id);
+      saveSystems(next);
+      set({ systems: next });
+    },
+    registerSystemsFromFlow: () => {
+      const { nodes, systems, addSystem } = get();
+      const names = [
+        ...new Set(nodes.map((n) => n.data.system?.trim()).filter(Boolean)),
+      ] as string[];
+      let added = 0;
+      for (const name of names) {
+        if (systems.some((s) => s.name.toLowerCase() === name.toLowerCase())) continue;
+        if (addSystem({ name, category: 'other' })) added++;
+      }
+      return added;
+    },
     testScenarioOpen: false,
     setTestScenarioOpen: (open) => set({ testScenarioOpen: open }),
 

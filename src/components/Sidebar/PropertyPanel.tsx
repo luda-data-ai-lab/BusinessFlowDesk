@@ -70,8 +70,14 @@ function NodeProperties({ id }: { id: string }) {
   const changeNodeType = useFlowStore((s) => s.changeNodeType);
   const deleteNode = useFlowStore((s) => s.deleteNode);
   const systems = useFlowStore((s) => s.nodes.map((n) => n.data.system?.trim()).filter(Boolean));
+  const catalog = useFlowStore((s) => s.systems);
+  const openCatalog = useFlowStore((s) => s.setSystemCatalogOpen);
   if (!node) return null;
   const systemOptions = [...new Set(systems)] as string[];
+  const registered = catalog.find(
+    (s) => s.name.toLowerCase() === (node.data.system?.trim().toLowerCase() ?? ''),
+  );
+  const customSystem = !!node.data.system && !registered;
   const data = node.data;
   const color = data.color || NODE_TYPE_MAP[data.nodeType].color;
   const set = (patch: Partial<FlowNodeData>) => updateNodeData(id, patch);
@@ -117,17 +123,49 @@ function NodeProperties({ id }: { id: string }) {
         </Field>
       </div>
       <Field label={t('system')}>
-        <DebouncedText
-          value={data.system ?? ''}
-          onCommit={(v) => set({ system: v || undefined })}
-          placeholder={t('systemPlaceholder')}
-          list="bfd-system-options"
-        />
+        {catalog.length > 0 && (
+          <select
+            className={`${inputClass} mb-1`}
+            value={registered ? registered.name : customSystem ? '__custom' : ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === '__manage') openCatalog(true);
+              else if (v === '__custom') set({ system: data.system || ' ' });
+              else set({ system: v || undefined });
+            }}
+          >
+            <option value="">{t('systemNone')}</option>
+            {catalog.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+            <option value="__custom">{t('systemCustom')}</option>
+            <option value="__manage">⚙ {t('systemCatalog')}…</option>
+          </select>
+        )}
+        {(catalog.length === 0 || customSystem) && (
+          <DebouncedText
+            value={data.system?.trim() ?? ''}
+            onCommit={(v) => set({ system: v || undefined })}
+            placeholder={t('systemPlaceholder')}
+            list="bfd-system-options"
+          />
+        )}
         <datalist id="bfd-system-options">
           {systemOptions.map((sys) => (
             <option key={sys} value={sys} />
           ))}
         </datalist>
+        {catalog.length === 0 && (
+          <button
+            type="button"
+            onClick={() => openCatalog(true)}
+            className="mt-1 text-[11px] text-primary hover:underline"
+          >
+            + {t('systemRegisterHint')}
+          </button>
+        )}
       </Field>
       <Field label={t('color')}>
         <div className="flex items-center gap-2">

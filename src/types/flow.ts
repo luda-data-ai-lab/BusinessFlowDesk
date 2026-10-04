@@ -84,6 +84,8 @@ export interface GenerateRequest {
   role: RoleType;
   existingFlow: AIFlowResponse | null;
   language?: 'ko' | 'en';
+  /** Names of systems registered in the catalog; the generator should reuse them. */
+  systems?: string[];
 }
 
 export interface GenerateResponse {

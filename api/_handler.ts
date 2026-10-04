@@ -24,7 +24,12 @@ export function parseRequest(raw: unknown): GenerateRequest | { error: string } 
     ? (body.existingFlow as AIFlowResponse)
     : null;
   const language = body.language === 'en' ? 'en' : 'ko';
-  return { prompt, role, existingFlow, language };
+  const systems = Array.isArray(body.systems)
+    ? body.systems
+        .filter((s): s is string => typeof s === 'string' && s.trim().length > 0 && s.length <= 60)
+        .slice(0, 50)
+    : [];
+  return { prompt, role, existingFlow, language, systems };
 }
 
 interface AnthropicMessage {
@@ -43,7 +48,10 @@ export async function handleGenerate(
   if (!apiKey) {
     return {
       status: 200,
-      body: { flow: generateMockFlow(parsed.prompt, parsed.role, parsed.existingFlow), mock: true },
+      body: {
+        flow: generateMockFlow(parsed.prompt, parsed.role, parsed.existingFlow, parsed.systems),
+        mock: true,
+      },
     };
   }
 
@@ -59,7 +67,12 @@ export async function handleGenerate(
       model,
       max_tokens: 4096,
       system: buildSystemPrompt(parsed.role, parsed.language),
-      messages: [{ role: 'user', content: buildUserPrompt(parsed.prompt, parsed.existingFlow) }],
+      messages: [
+        {
+          role: 'user',
+          content: buildUserPrompt(parsed.prompt, parsed.existingFlow, parsed.systems),
+        },
+      ],
     }),
   });
 
