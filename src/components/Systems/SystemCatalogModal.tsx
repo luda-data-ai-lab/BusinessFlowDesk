@@ -269,7 +269,11 @@ export function SystemCatalogModal() {
           </Button>
         </div>
       </form>
-      {message && <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{message}</p>}
+      {(message || (!editing && systems.length >= MAX_SYSTEMS)) && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          {message ?? t('systemLimit').replace('{n}', String(MAX_SYSTEMS))}
+        </p>
+      )}
       <div className="mt-4 flex justify-end">
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
           {t('close')}
