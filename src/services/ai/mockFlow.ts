@@ -96,7 +96,8 @@ export function generateMockFlow(
   existing: AIFlowResponse | null,
   registered: string[] = [],
 ): AIFlowResponse {
-  if (existing && existing.nodes.length > 0) return modifyMockFlow(prompt, role, existing);
+  if (existing && existing.nodes.length > 0)
+    return modifyMockFlow(prompt, role, existing, registered);
 
   const steps = splitSteps(prompt);
   const departments = DEPARTMENTS[role];
@@ -162,7 +163,12 @@ export function generateMockFlow(
   return { title: clean(prompt).slice(0, 30) || '새 플로우', nodes, edges };
 }
 
-function modifyMockFlow(prompt: string, role: RoleType, existing: AIFlowResponse): AIFlowResponse {
+function modifyMockFlow(
+  prompt: string,
+  role: RoleType,
+  existing: AIFlowResponse,
+  registered: string[] = [],
+): AIFlowResponse {
   const nodes = existing.nodes.map((n) => ({ ...n }));
   const edges = existing.edges.map((e) => ({ ...e }));
   const label =
@@ -183,6 +189,7 @@ function modifyMockFlow(prompt: string, role: RoleType, existing: AIFlowResponse
     label: isDecision ? `${label}?` : label,
     description: `프롬프트로 추가된 단계: ${prompt}`,
     department: DEPARTMENTS[role][nodes.length % DEPARTMENTS[role].length],
+    system: pickSystem(label, isDecision ? 'decision' : 'task', role, nodes.length, registered),
     estimatedTime: TIMES[role][nodes.length % TIMES[role].length],
   });
 
