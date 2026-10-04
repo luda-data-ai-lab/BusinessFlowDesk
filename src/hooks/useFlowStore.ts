@@ -362,9 +362,23 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     updateNodeData: (id, data) => {
+      const { nodes, edges, swimlanes, laneBy, layoutDirection } = get();
       pushHistory();
+      const updated = nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n));
+      const prev = nodes.find((n) => n.id === id);
+      const laneChanged =
+        swimlanes &&
+        laneBy in data &&
+        (data[laneBy]?.trim() ?? '') !== (prev?.data[laneBy]?.trim() ?? '');
       set({
-        nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
+        nodes: laneChanged
+          ? layoutFlow(updated, edges, {
+              direction: layoutDirection,
+              respectPinned: false,
+              swimlanes: true,
+              laneBy,
+            })
+          : updated,
       });
     },
 
