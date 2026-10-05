@@ -7,6 +7,7 @@ import {
   type BusinessSystem,
   type SystemCategory,
 } from '../../types/system';
+import { MAX_SYSTEMS, MAX_SYSTEM_NAME } from '../../services/systemCatalog';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 
@@ -74,6 +75,10 @@ export function SystemCatalogModal() {
     );
     if (dup) {
       setMessage(t('systemDuplicate'));
+      return;
+    }
+    if (!editing && systems.length >= MAX_SYSTEMS) {
+      setMessage(t('systemLimit').replace('{n}', String(MAX_SYSTEMS)));
       return;
     }
     if (editing) {
@@ -195,6 +200,7 @@ export function SystemCatalogModal() {
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="ERP, CRM, 결제 PG …"
+            maxLength={MAX_SYSTEM_NAME}
             required
             autoFocus
           />
@@ -254,12 +260,20 @@ export function SystemCatalogModal() {
               {t('close')}
             </Button>
           )}
-          <Button size="sm" type="submit" disabled={!draft.name.trim()}>
+          <Button
+            size="sm"
+            type="submit"
+            disabled={!draft.name.trim() || (!editing && systems.length >= MAX_SYSTEMS)}
+          >
             {editing ? t('systemSave') : `+ ${t('systemAdd')}`}
           </Button>
         </div>
       </form>
-      {message && <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{message}</p>}
+      {(message || (!editing && systems.length >= MAX_SYSTEMS)) && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          {message ?? t('systemLimit').replace('{n}', String(MAX_SYSTEMS))}
+        </p>
+      )}
       <div className="mt-4 flex justify-end">
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
           {t('close')}

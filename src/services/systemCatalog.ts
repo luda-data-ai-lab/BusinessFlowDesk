@@ -2,6 +2,7 @@ import { SYSTEM_CATEGORIES, SYSTEM_COLORS, type BusinessSystem } from '../types/
 
 export const SYSTEMS_KEY = 'bfd_systems';
 export const MAX_SYSTEMS = 50;
+export const MAX_SYSTEM_NAME = 60;
 
 function isSystem(v: unknown): v is BusinessSystem {
   if (!v || typeof v !== 'object') return false;

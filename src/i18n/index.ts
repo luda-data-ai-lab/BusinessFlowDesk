@@ -68,6 +68,10 @@ const STRINGS = {
     ko: '이 시스템을 카탈로그에서 삭제할까요? 노드의 시스템 값은 그대로 남습니다.',
     en: 'Remove this system from the catalog? Node values are kept.',
   },
+  systemLimit: {
+    ko: '시스템은 최대 {n}개까지 등록할 수 있어요',
+    en: 'Up to {n} systems can be registered',
+  },
   systemDuplicate: {
     ko: '같은 이름의 시스템이 이미 있어요',
     en: 'A system with this name already exists',

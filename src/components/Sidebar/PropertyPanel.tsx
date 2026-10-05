@@ -72,12 +72,13 @@ function NodeProperties({ id }: { id: string }) {
   const systems = useFlowStore((s) => s.nodes.map((n) => n.data.system?.trim()).filter(Boolean));
   const catalog = useFlowStore((s) => s.systems);
   const openCatalog = useFlowStore((s) => s.setSystemCatalogOpen);
+  const [customFor, setCustomFor] = useState<string | null>(null);
   if (!node) return null;
   const systemOptions = [...new Set(systems)] as string[];
   const registered = catalog.find(
     (s) => s.name.toLowerCase() === (node.data.system?.trim().toLowerCase() ?? ''),
   );
-  const customSystem = !!node.data.system && !registered;
+  const customSystem = customFor === id || (!!node.data.system && !registered);
   const data = node.data;
   const color = data.color || NODE_TYPE_MAP[data.nodeType].color;
   const set = (patch: Partial<FlowNodeData>) => updateNodeData(id, patch);
@@ -126,12 +127,19 @@ function NodeProperties({ id }: { id: string }) {
         {catalog.length > 0 && (
           <select
             className={`${inputClass} mb-1`}
-            value={registered ? registered.name : customSystem ? '__custom' : ''}
+            value={customSystem ? '__custom' : registered ? registered.name : ''}
             onChange={(e) => {
               const v = e.target.value;
-              if (v === '__manage') openCatalog(true);
-              else if (v === '__custom') set({ system: data.system || ' ' });
-              else set({ system: v || undefined });
+              if (v === '__manage') {
+                openCatalog(true);
+                return;
+              }
+              if (v === '__custom') {
+                setCustomFor(id);
+                return;
+              }
+              setCustomFor(null);
+              set({ system: v || undefined });
             }}
           >
             <option value="">{t('systemNone')}</option>
