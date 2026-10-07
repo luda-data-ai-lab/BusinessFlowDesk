@@ -4,6 +4,7 @@ import { useFlowStore } from '../../hooks/useFlowStore';
 import { useI18n, useT } from '../../i18n';
 import type { FlowNodeData, NodeType } from '../../types/flow';
 import { Button } from '../common/Button';
+import { interfacesBetween } from '../../services/interfaceCatalog';
 
 const inputClass =
   'w-full rounded-md border border-border bg-white px-2 py-1.5 text-xs text-slate-800 outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
@@ -211,9 +212,73 @@ function EdgeProperties({ id }: { id: string }) {
   const edge = useFlowStore((s) => s.edges.find((e) => e.id === id));
   const updateEdge = useFlowStore((s) => s.updateEdge);
   const deleteEdge = useFlowStore((s) => s.deleteEdge);
+  const interfaces = useFlowStore((s) => s.interfaces);
+  const openInterfaces = useFlowStore((s) => s.setInterfaceCatalogOpen);
+  const fromSystem = useFlowStore(
+    (s) => s.nodes.find((n) => n.id === edge?.source)?.data.system?.trim() ?? '',
+  );
+  const toSystem = useFlowStore(
+    (s) => s.nodes.find((n) => n.id === edge?.target)?.data.system?.trim() ?? '',
+  );
   if (!edge) return null;
+  const isBoundary =
+    !!fromSystem && !!toSystem && fromSystem.toLowerCase() !== toSystem.toLowerCase();
+  const code = edge.data?.interface?.trim() ?? '';
+  const matching = interfacesBetween(interfaces, fromSystem, toSystem);
+  const others = interfaces.filter((i) => !matching.includes(i));
+  const known = interfaces.some((i) => i.code.toLowerCase() === code.toLowerCase());
   return (
     <div className="space-y-3">
+      <Field label={`🔗 ${t('interfaceCode')}`}>
+        <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">
+          {!fromSystem || !toSystem
+            ? t('interfaceNoSystems')
+            : isBoundary
+              ? `${t('interfaceBoundary')}: ${fromSystem} → ${toSystem}`
+              : t('interfaceNotBoundary')}
+        </p>
+        {(isBoundary || code) && (
+          <select
+            className={inputClass}
+            value={code}
+            onChange={(e) => {
+              if (e.target.value === '__manage') {
+                openInterfaces(true, { source: fromSystem, target: toSystem, edgeId: id });
+                return;
+              }
+              updateEdge(id, { interface: e.target.value });
+            }}
+          >
+            <option value="">{t('interfaceNone')}</option>
+            {matching.length > 0 && (
+              <optgroup label={t('interfaceSuggested')}>
+                {matching.map((i) => (
+                  <option key={i.id} value={i.code}>
+                    {i.code}
+                    {i.name ? ` · ${i.name}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {others.length > 0 && (
+              <optgroup label={t('interfaceOthers')}>
+                {others.map((i) => (
+                  <option key={i.id} value={i.code}>
+                    {i.code} ({i.source} → {i.target})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {code && !known && <option value={code}>{code}</option>}
+            <option value="__manage">+ {t('interfaceRegisterHint')}…</option>
+          </select>
+        )}
+        {isBoundary && !code && (
+          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+            ⚠ {t('interfaceUnmapped')}
+          </p>
+        )}
+      </Field>
       <Field label={t('edgeLabel')}>
         <DebouncedText
           value={typeof edge.label === 'string' ? edge.label : ''}

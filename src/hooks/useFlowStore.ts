@@ -29,6 +29,14 @@ import { computeLanes, laneAtPosition, sizeOf } from '../utils/swimlanes';
 import { newId, parseAIFlow, toAIFlow } from '../utils/flowParser';
 import { generateFlow } from '../services/ai/generateFlow';
 import type { BusinessSystem } from '../types/system';
+import type { BusinessInterface } from '../types/interface';
+import {
+  loadInterfaces,
+  MAX_INTERFACE_CODE,
+  MAX_INTERFACES,
+  newInterfaceId,
+  saveInterfaces,
+} from '../services/interfaceCatalog';
 import {
   canonicalSystemName,
   loadSystems,
@@ -111,7 +119,10 @@ export interface FlowState {
   deleteEdge: (id: string) => void;
   updateNodeData: (id: string, data: Partial<FlowNodeData>) => void;
   changeNodeType: (id: string, type: NodeType) => void;
-  updateEdge: (id: string, patch: { label?: string; style?: FlowEdgeData['style'] }) => void;
+  updateEdge: (
+    id: string,
+    patch: { label?: string; style?: FlowEdgeData['style']; interface?: string },
+  ) => void;
   generateFromPrompt: (prompt: string, language: Language) => Promise<void>;
   modifyWithPrompt: (prompt: string, language: Language) => Promise<void>;
   cancelGeneration: () => void;
@@ -143,6 +154,18 @@ export interface FlowState {
   removeSystem: (id: string) => void;
   /** Registers every system name used in the current flow that isn't in the catalog yet. */
   registerSystemsFromFlow: () => number;
+  /** Interface catalog (system-to-system integrations) shared by every flow in this browser. */
+  interfaces: BusinessInterface[];
+  interfaceCatalogOpen: boolean;
+  /** Pre-filled source/target when the catalog is opened from an edge. */
+  interfacePrefill: { source: string; target: string; edgeId?: string } | null;
+  setInterfaceCatalogOpen: (
+    open: boolean,
+    prefill?: { source: string; target: string; edgeId?: string },
+  ) => void;
+  addInterface: (input: Omit<BusinessInterface, 'id'>) => BusinessInterface | null;
+  updateInterface: (id: string, patch: Partial<Omit<BusinessInterface, 'id'>>) => void;
+  removeInterface: (id: string) => void;
   testScenarioOpen: boolean;
   setTestScenarioOpen: (open: boolean) => void;
   toProject: () => FlowProject;
@@ -442,6 +465,10 @@ export const useFlowStore = create<FlowState>((set, get) => {
                   condition:
                     patch.label !== undefined ? patch.label || undefined : e.data?.condition,
                   style: patch.style ?? e.data?.style ?? 'solid',
+                  interface:
+                    patch.interface !== undefined
+                      ? patch.interface.trim() || undefined
+                      : e.data?.interface,
                 },
               }
             : e,
@@ -489,6 +516,15 @@ export const useFlowStore = create<FlowState>((set, get) => {
           get().systems.map((s) => s.name),
         );
         const parsed = canonicalizeSystems(parseAIFlow(result.flow, nodes), get().systems);
+        const prevIf = new Map(
+          edges
+            .filter((e) => e.data?.interface)
+            .map((e) => [`${e.source}->${e.target}`, e.data!.interface]),
+        );
+        parsed.edges = parsed.edges.map((e) => {
+          const code = prevIf.get(`${e.source}->${e.target}`);
+          return code ? { ...e, data: { ...e.data, interface: code } } : e;
+        });
         applyGenerated(parsed, result.mock, true);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -665,6 +701,20 @@ export const useFlowStore = create<FlowState>((set, get) => {
       const next = systems.map((s) => (s.id === id ? { ...s, ...patch, name } : s));
       saveSystems(next);
       const renamed = name !== prev.name;
+      if (renamed) {
+        const sameAs = (v: string) => v.trim().toLowerCase() === prev.name.toLowerCase();
+        const ifaces = get().interfaces.map((i) =>
+          sameAs(i.source) || sameAs(i.target)
+            ? {
+                ...i,
+                source: sameAs(i.source) ? name : i.source,
+                target: sameAs(i.target) ? name : i.target,
+              }
+            : i,
+        );
+        saveInterfaces(ifaces);
+        set({ interfaces: ifaces });
+      }
       set({
         systems: next,
         nodes: renamed
@@ -692,6 +742,75 @@ export const useFlowStore = create<FlowState>((set, get) => {
         if (addSystem({ name, category: 'other' })) added++;
       }
       return added;
+    },
+    interfaces: loadInterfaces(),
+    interfaceCatalogOpen: false,
+    interfacePrefill: null,
+    setInterfaceCatalogOpen: (open, prefill) =>
+      set({ interfaceCatalogOpen: open, interfacePrefill: open ? (prefill ?? null) : null }),
+    addInterface: (input) => {
+      const code = input.code.trim().slice(0, MAX_INTERFACE_CODE);
+      const source = input.source.trim();
+      const target = input.target.trim();
+      const { interfaces } = get();
+      if (interfaces.length >= MAX_INTERFACES) return null;
+      if (!code || !source || !target) return null;
+      if (interfaces.some((i) => i.code.toLowerCase() === code.toLowerCase())) return null;
+      const iface: BusinessInterface = {
+        id: newInterfaceId(),
+        code,
+        name: input.name?.trim() || undefined,
+        source,
+        target,
+        method: input.method,
+        frequency: input.frequency,
+        description: input.description?.trim() || undefined,
+      };
+      const next = [...interfaces, iface];
+      saveInterfaces(next);
+      set({ interfaces: next });
+      return iface;
+    },
+    updateInterface: (id, patch) => {
+      const { interfaces, edges } = get();
+      const prev = interfaces.find((i) => i.id === id);
+      if (!prev) return;
+      const code = patch.code?.trim().slice(0, MAX_INTERFACE_CODE) || prev.code;
+      if (interfaces.some((i) => i.id !== id && i.code.toLowerCase() === code.toLowerCase()))
+        return;
+      const next = interfaces.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              ...patch,
+              code,
+              source: patch.source?.trim() || i.source,
+              target: patch.target?.trim() || i.target,
+              name: patch.name !== undefined ? patch.name.trim() || undefined : i.name,
+              description:
+                patch.description !== undefined
+                  ? patch.description.trim() || undefined
+                  : i.description,
+            }
+          : i,
+      );
+      saveInterfaces(next);
+      const recoded = code !== prev.code;
+      set({
+        interfaces: next,
+        edges: recoded
+          ? edges.map((e) =>
+              e.data?.interface?.trim().toLowerCase() === prev.code.toLowerCase()
+                ? { ...e, data: { ...e.data, interface: code } }
+                : e,
+            )
+          : edges,
+      });
+    },
+    removeInterface: (id) => {
+      const next = get().interfaces.filter((i) => i.id !== id);
+      saveInterfaces(next);
+      set({ interfaces: next });
     },
     testScenarioOpen: false,
     setTestScenarioOpen: (open) => set({ testScenarioOpen: open }),

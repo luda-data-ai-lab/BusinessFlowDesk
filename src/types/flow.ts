@@ -36,6 +36,8 @@ export interface FlowNodeData extends Record<string, unknown> {
 export interface FlowEdgeData extends Record<string, unknown> {
   condition?: string;
   style?: 'solid' | 'dashed';
+  /** Code of the registered interface this transition goes through (e.g. "IF-001"). */
+  interface?: string;
 }
 
 export type FlowNode = Node<FlowNodeData, NodeType>;

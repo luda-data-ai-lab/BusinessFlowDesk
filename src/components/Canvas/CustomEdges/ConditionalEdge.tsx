@@ -17,8 +17,25 @@ export const ConditionalEdge = memo(function ConditionalEdge({
   markerEnd,
   data,
   sourceHandleId,
+  source,
+  target,
 }: EdgeProps<FlowEdge>) {
   const updateEdge = useFlowStore((s) => s.updateEdge);
+  const fromSystem = useFlowStore(
+    (s) => s.nodes.find((n) => n.id === source)?.data.system?.trim() ?? '',
+  );
+  const toSystem = useFlowStore(
+    (s) => s.nodes.find((n) => n.id === target)?.data.system?.trim() ?? '',
+  );
+  const ifaceName = useFlowStore(
+    (s) =>
+      s.interfaces.find(
+        (i) => i.code.toLowerCase() === (data?.interface?.trim().toLowerCase() ?? ''),
+      )?.name,
+  );
+  const ifaceCode = data?.interface?.trim() ?? '';
+  const unmapped =
+    !ifaceCode && !!fromSystem && !!toSystem && fromSystem.toLowerCase() !== toSystem.toLowerCase();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(typeof label === 'string' ? label : '');
@@ -108,6 +125,21 @@ export const ConditionalEdge = memo(function ConditionalEdge({
             >
               {text || `+ ${t('edgeLabel')}`}
             </button>
+          ) : null}
+          {ifaceCode ? (
+            <div
+              className="mx-auto mt-0.5 w-fit rounded border border-sky-300 bg-sky-50 px-1 py-px font-mono text-[10px] font-semibold text-sky-800 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-200"
+              title={`${fromSystem} → ${toSystem}${ifaceName ? ` · ${ifaceName}` : ''}`}
+            >
+              🔗 {ifaceCode}
+            </div>
+          ) : unmapped ? (
+            <div
+              className="mx-auto mt-0.5 w-fit rounded border border-dashed border-amber-400 bg-amber-50 px-1 py-px text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+              title={`${t('interfaceUnmapped')}: ${fromSystem} → ${toSystem}`}
+            >
+              ⚠ {fromSystem}→{toSystem}
+            </div>
           ) : null}
         </div>
       </EdgeLabelRenderer>
