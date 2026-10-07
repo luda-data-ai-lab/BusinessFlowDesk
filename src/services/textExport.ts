@@ -12,6 +12,7 @@ const STRINGS = {
   system: { ko: '시스템', en: 'System' },
   systems: { ko: '시스템별 단계', en: 'Steps by system' },
   noSystem: { ko: '수작업 / 시스템 없음', en: 'Manual / no system' },
+  interface: { ko: '인터페이스', en: 'Interface' },
   stepCount: { ko: '단계 수', en: 'Steps' },
   time: { ko: '소요', en: 'Time' },
   type: { ko: '유형', en: 'Type' },
@@ -163,12 +164,12 @@ export function toMarkdown(project: FlowProject, lang: Language): string {
     '',
     `## ${s('transitions', lang)}`,
     '',
-    `| # | ${s('from', lang)} | ${s('to', lang)} | ${s('condition', lang)} |`,
-    '|---|---|---|---|',
+    `| # | ${s('from', lang)} | ${s('to', lang)} | ${s('condition', lang)} | ${s('interface', lang)} |`,
+    '|---|---|---|---|---|',
   );
   for (const e of edges) {
     out.push(
-      `| ${index.get(e.source) ?? '?'}→${index.get(e.target) ?? '?'} | ${name(e.source)} | ${name(e.target)} | ${edgeLabel(e, lang)} |`,
+      `| ${index.get(e.source) ?? '?'}→${index.get(e.target) ?? '?'} | ${name(e.source)} | ${name(e.target)} | ${edgeLabel(e, lang)} | ${e.data?.interface ?? ''} |`,
     );
   }
 

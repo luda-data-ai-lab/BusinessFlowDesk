@@ -76,6 +76,11 @@ export function TestScenarioModal() {
                 🖥 {suite.systems.map((s) => s.system).join(', ')}
               </span>
             )}
+            {suite.interfaces.length > 0 && (
+              <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700 dark:bg-sky-950 dark:text-sky-200">
+                🔗 {suite.interfaces.filter((i) => i.mapped).length} / {suite.interfaces.length}
+              </span>
+            )}
             {suite.truncated && (
               <span className="text-red-600 dark:text-red-300">
                 {ts('truncated', lang).replace('{n}', String(MAX_SCENARIOS))}
@@ -86,16 +91,24 @@ export function TestScenarioModal() {
             <table className="w-full min-w-[900px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                 <tr>
-                  {(['id', 'name', 'preconditions', 'steps', 'expected', 'systems'] as const).map(
-                    (k) => (
-                      <th
-                        key={k}
-                        className="border-b border-border px-3 py-2 font-semibold dark:border-slate-600"
-                      >
-                        {ts(k, lang)}
-                      </th>
-                    ),
-                  )}
+                  {(
+                    [
+                      'id',
+                      'name',
+                      'preconditions',
+                      'steps',
+                      'expected',
+                      'systems',
+                      'interfaces',
+                    ] as const
+                  ).map((k) => (
+                    <th
+                      key={k}
+                      className="border-b border-border px-3 py-2 font-semibold dark:border-slate-600"
+                    >
+                      {ts(k, lang)}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -125,6 +138,16 @@ export function TestScenarioModal() {
                     </td>
                     <td className="border-b border-border px-3 py-2 dark:border-slate-600">
                       {sc.systems.join(', ')}
+                    </td>
+                    <td className="border-b border-border px-3 py-2 font-mono text-[11px] dark:border-slate-600">
+                      {sc.interfaces.map((i) => (
+                        <div
+                          key={i}
+                          className={i.includes('(') ? 'text-amber-700 dark:text-amber-300' : ''}
+                        >
+                          {i}
+                        </div>
+                      ))}
                     </td>
                   </tr>
                 ))}

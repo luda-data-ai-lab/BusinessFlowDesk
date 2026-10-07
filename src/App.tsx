@@ -7,6 +7,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { TemplateGalleryModal } from './components/Templates/TemplateGalleryModal';
 import { TestScenarioModal } from './components/TestScenarios/TestScenarioModal';
 import { SystemCatalogModal } from './components/Systems/SystemCatalogModal';
+import { InterfaceCatalogModal } from './components/Interfaces/InterfaceCatalogModal';
 import { useBreakpoint } from './hooks/useMediaQuery';
 import { useUndoRedo } from './hooks/useUndoRedo';
 import { t as translate, useI18n, useT } from './i18n';
@@ -69,6 +70,7 @@ export default function App() {
       {!readOnly && <TemplateGalleryModal />}
       {!readOnly && <TestScenarioModal />}
       {!readOnly && <SystemCatalogModal />}
+      {!readOnly && <InterfaceCatalogModal />}
     </div>
   );
 }

@@ -37,6 +37,7 @@ export async function exportScenariosAsXlsx(suite: ScenarioSuite, lang: Language
       { header: ts('steps', lang), key: 'steps', width: 60 },
       { header: ts('expected', lang), key: 'expected', width: 36 },
       { header: ts('systems', lang), key: 'systems', width: 24 },
+      { header: ts('interfaces', lang), key: 'interfaces', width: 26 },
       { header: ts('departments', lang), key: 'departments', width: 20 },
       { header: ts('decisions', lang), key: 'choices', width: 30 },
       { header: ts('stepCount', lang), key: 'count', width: 10 },
@@ -52,6 +53,7 @@ export async function exportScenariosAsXlsx(suite: ScenarioSuite, lang: Language
       steps: sc.steps.map((st) => stepText(st, lang)).join('\n'),
       expected: sc.expected,
       systems: sc.systems.join(', '),
+      interfaces: sc.interfaces.join('\n'),
       departments: sc.departments.join(', '),
       choices: sc.choices.map((c) => `${c.decision} = ${c.option}`).join('\n'),
       count: sc.steps.length,
@@ -70,7 +72,11 @@ export async function exportScenariosAsXlsx(suite: ScenarioSuite, lang: Language
     cov,
     [
       { header: ts('kind', lang), key: 'kind', width: 14 },
-      { header: `${ts('decision', lang)} / ${ts('system', lang)}`, key: 'item', width: 36 },
+      {
+        header: `${ts('decision', lang)} / ${ts('system', lang)} / ${ts('interface', lang)}`,
+        key: 'item',
+        width: 36,
+      },
       { header: ts('option', lang), key: 'option', width: 20 },
       { header: ts('tcCount', lang), key: 'count', width: 10 },
       { header: ts('coveredBy', lang), key: 'ids', width: 40 },
@@ -95,6 +101,16 @@ export async function exportScenariosAsXlsx(suite: ScenarioSuite, lang: Language
       count: sys.scenarioIds.length,
       ids: sys.scenarioIds.join(', '),
     });
+  }
+  for (const i of suite.interfaces) {
+    const row = cov.addRow({
+      kind: ts('interface', lang),
+      item: i.mapped ? i.code : `${i.code} (${ts('unmappedIf', lang)})`,
+      option: `${i.from} → ${i.to}`,
+      count: i.scenarioIds.length,
+      ids: i.scenarioIds.join(', '),
+    });
+    if (!i.mapped) row.font = { color: { argb: 'FF92400E' } };
   }
   const covered = suite.branches.filter((b) => b.scenarioIds.length > 0).length;
   cov.addRow({});

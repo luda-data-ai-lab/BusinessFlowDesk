@@ -1,6 +1,7 @@
 import type { Language } from '../i18n';
 import type { FlowEdge, FlowNode, FlowProject } from '../types/flow';
 import { edgeLabel, orderNodes } from './textExport';
+import { systemBoundaries } from './interfaceCatalog';
 
 const STRINGS = {
   mainFlow: { ko: '정상 흐름', en: 'Happy path' },
@@ -24,6 +25,10 @@ const STRINGS = {
   steps: { ko: '테스트 단계', en: 'Test steps' },
   expected: { ko: '기대결과', en: 'Expected result' },
   systems: { ko: '관련 시스템', en: 'Systems' },
+  interfaces: { ko: '인터페이스', en: 'Interfaces' },
+  interface: { ko: '인터페이스', en: 'Interface' },
+  unmappedIf: { ko: '미매핑', en: 'unmapped' },
+  interfacesReady: { ko: '인터페이스 연계 가능', en: 'Interfaces available' },
   departments: { ko: '관련 부서', en: 'Departments' },
   decisions: { ko: '분기 선택', en: 'Branch choices' },
   stepCount: { ko: '단계 수', en: 'Steps' },
@@ -50,6 +55,10 @@ export interface ScenarioStep {
   node: FlowNode;
   /** Label of the edge that led here (branch choice), if any. */
   via?: string;
+  /** Interface code on the edge that led here, when it crosses a system boundary. */
+  interface?: string;
+  /** Set when the edge crosses a system boundary without a mapped interface ("A→B"). */
+  unmappedBoundary?: string;
 }
 
 export interface TestScenario {
@@ -60,6 +69,8 @@ export interface TestScenario {
   steps: ScenarioStep[];
   expected: string;
   systems: string[];
+  /** Interface codes traversed; unmapped boundaries appear as "A→B (unmapped)". */
+  interfaces: string[];
   departments: string[];
   /** decision label → chosen branch label */
   choices: Array<{ decision: string; option: string }>;
@@ -76,11 +87,20 @@ export interface SystemCoverage {
   scenarioIds: string[];
 }
 
+export interface InterfaceCoverage {
+  code: string;
+  from: string;
+  to: string;
+  mapped: boolean;
+  scenarioIds: string[];
+}
+
 export interface ScenarioSuite {
   title: string;
   scenarios: TestScenario[];
   branches: BranchCoverage[];
   systems: SystemCoverage[];
+  interfaces: InterfaceCoverage[];
   truncated: boolean;
 }
 
@@ -89,6 +109,7 @@ interface Path {
   /** Set when the path ends because every next step was already visited (loop). */
   loopTo?: FlowNode;
   vias: Array<string | undefined>;
+  edges: Array<FlowEdge | undefined>;
   choices: Array<{ decision: string; option: string }>;
 }
 
@@ -138,6 +159,7 @@ function enumeratePaths(
         {
           nodes: [...path.nodes, target],
           vias: [...path.vias, label || undefined],
+          edges: [...path.edges, e],
           choices: isDecision
             ? [...path.choices, { decision: cur.data.label, option: label || '→' }]
             : path.choices,
@@ -148,7 +170,11 @@ function enumeratePaths(
   };
 
   for (const start of starts) {
-    walk(start, { nodes: [start], vias: [undefined], choices: [] }, new Set([start.id]));
+    walk(
+      start,
+      { nodes: [start], vias: [undefined], edges: [undefined], choices: [] },
+      new Set([start.id]),
+    );
   }
   return { paths, truncated };
 }
@@ -163,17 +189,32 @@ export function generateScenarios(
 ): ScenarioSuite {
   const { nodes, edges } = project;
   const { paths, truncated } = enumeratePaths(nodes, edges, lang);
+  const boundaries = systemBoundaries(nodes, edges);
+  const boundaryOf = (e: FlowEdge) => boundaries.find((b) => b.edge.id === e.id);
   const sameChoiceCount = new Map<string, number>();
 
   const scenarios: TestScenario[] = paths.map((p, i) => {
     const id = `TC-${String(i + 1).padStart(2, '0')}`;
     const kind: TestScenario['kind'] = i === 0 ? 'main' : 'alternate';
-    const steps: ScenarioStep[] = p.nodes.map((node, idx) => ({
-      no: idx + 1,
-      node,
-      via: p.vias[idx],
-    }));
+    const steps: ScenarioStep[] = p.nodes.map((node, idx) => {
+      const e = p.edges[idx];
+      const b = e ? boundaryOf(e) : undefined;
+      return {
+        no: idx + 1,
+        node,
+        via: p.vias[idx],
+        interface: b?.code,
+        unmappedBoundary: b && !b.code ? `${b.from}→${b.to}` : undefined,
+      };
+    });
     const systems = uniq(p.nodes.map((n) => n.data.system));
+    const interfaces = uniq(
+      steps.map(
+        (st) =>
+          st.interface ??
+          (st.unmappedBoundary ? `${st.unmappedBoundary} (${ts('unmappedIf', lang)})` : undefined),
+      ),
+    );
     const departments = uniq(p.nodes.map((n) => n.data.department));
     const last = p.nodes[p.nodes.length - 1];
 
@@ -192,6 +233,9 @@ export function generateScenarios(
 
     const preconditions = [`${ts('startAt', lang)}: ${p.nodes[0].data.label}`];
     if (systems.length) preconditions.push(`${ts('systemsReady', lang)}: ${systems.join(', ')}`);
+    const mappedIfs = uniq(steps.map((st) => st.interface));
+    if (mappedIfs.length)
+      preconditions.push(`${ts('interfacesReady', lang)}: ${mappedIfs.join(', ')}`);
 
     const expected =
       last.data.nodeType === 'end'
@@ -208,6 +252,7 @@ export function generateScenarios(
       steps,
       expected,
       systems,
+      interfaces,
       departments,
       choices: p.choices,
     };
@@ -230,7 +275,33 @@ export function generateScenarios(
     scenarioIds: scenarios.filter((s) => s.systems.includes(system)).map((s) => s.id),
   }));
 
-  return { title: project.title, scenarios, branches, systems, truncated };
+  const ifaceCov = new Map<string, InterfaceCoverage>();
+  for (const b of boundaries) {
+    const key = b.code ?? `${b.from}→${b.to}`;
+    const entry = ifaceCov.get(key) ?? {
+      code: b.code ?? `${b.from}→${b.to}`,
+      from: b.from,
+      to: b.to,
+      mapped: !!b.code,
+      scenarioIds: [],
+    };
+    for (const sc of scenarios) {
+      const hit = sc.steps.some((st) =>
+        b.code ? st.interface === b.code : st.unmappedBoundary === `${b.from}→${b.to}`,
+      );
+      if (hit && !entry.scenarioIds.includes(sc.id)) entry.scenarioIds.push(sc.id);
+    }
+    ifaceCov.set(key, entry);
+  }
+
+  return {
+    title: project.title,
+    scenarios,
+    branches,
+    systems,
+    interfaces: [...ifaceCov.values()],
+    truncated,
+  };
 }
 
 export function stepText(step: ScenarioStep, lang: Language): string {
@@ -239,7 +310,12 @@ export function stepText(step: ScenarioStep, lang: Language): string {
     .filter(Boolean)
     .join(' / ');
   const via = step.via ? `[${step.via}] ` : '';
-  return `${step.no}. ${via}${d.label}${meta ? ` (${meta})` : ''}`;
+  const iface = step.interface
+    ? ` ⇄ ${step.interface}`
+    : step.unmappedBoundary
+      ? ` ⚠ ${step.unmappedBoundary} (${ts('unmappedIf', lang)})`
+      : '';
+  return `${step.no}. ${via}${d.label}${meta ? ` (${meta})` : ''}${iface}`;
 }
 
 export function suiteToMarkdown(suite: ScenarioSuite, lang: Language): string {
@@ -247,12 +323,12 @@ export function suiteToMarkdown(suite: ScenarioSuite, lang: Language): string {
   if (suite.truncated)
     out.push(`> ${ts('truncated', lang).replace('{n}', String(MAX_SCENARIOS))}`, '');
   out.push(
-    `| ${ts('id', lang)} | ${ts('name', lang)} | ${ts('preconditions', lang)} | ${ts('steps', lang)} | ${ts('expected', lang)} | ${ts('systems', lang)} |`,
-    '|---|---|---|---|---|---|',
+    `| ${ts('id', lang)} | ${ts('name', lang)} | ${ts('preconditions', lang)} | ${ts('steps', lang)} | ${ts('expected', lang)} | ${ts('systems', lang)} | ${ts('interfaces', lang)} |`,
+    '|---|---|---|---|---|---|---|',
   );
   for (const sc of suite.scenarios) {
     out.push(
-      `| ${sc.id} | ${sc.name} | ${sc.preconditions.join('<br>')} | ${sc.steps.map((st) => stepText(st, lang)).join('<br>')} | ${sc.expected} | ${sc.systems.join(', ')} |`,
+      `| ${sc.id} | ${sc.name} | ${sc.preconditions.join('<br>')} | ${sc.steps.map((st) => stepText(st, lang)).join('<br>')} | ${sc.expected} | ${sc.systems.join(', ')} | ${sc.interfaces.join(', ')} |`,
     );
   }
   if (suite.branches.length) {
@@ -276,6 +352,19 @@ export function suiteToMarkdown(suite: ScenarioSuite, lang: Language): string {
     );
     for (const sys of suite.systems)
       out.push(`| ${sys.system} | ${sys.scenarioIds.length} | ${sys.scenarioIds.join(', ')} |`);
+  }
+  if (suite.interfaces.length) {
+    out.push(
+      '',
+      `## ${ts('interfaces', lang)}`,
+      '',
+      `| ${ts('interface', lang)} | ${ts('system', lang)} | ${ts('tcCount', lang)} | ${ts('coveredBy', lang)} |`,
+      '|---|---|---|---|',
+    );
+    for (const i of suite.interfaces)
+      out.push(
+        `| ${i.mapped ? i.code : `⚠ ${ts('unmappedIf', lang)}`} | ${i.from} → ${i.to} | ${i.scenarioIds.length} | ${i.scenarioIds.join(', ')} |`,
+      );
   }
   return out.join('\n');
 }
