@@ -855,8 +855,17 @@ export const useFlowStore = create<FlowState>((set, get) => {
       set({ selectedNodeIds: ids });
     },
     diagnoseOpen: false,
-    setDiagnoseOpen: (open) =>
-      set({ diagnoseOpen: open, diagnoseError: open ? get().diagnoseError : null }),
+    setDiagnoseOpen: (open) => {
+      const { selectedNodeIds, diagnosisScope, nodes } = get();
+      const scope = selectedNodeIds.filter((id) => nodes.some((n) => n.id === id));
+      const same =
+        scope.length === diagnosisScope.length && scope.every((id) => diagnosisScope.includes(id));
+      set({
+        diagnoseOpen: open,
+        diagnoseError: null,
+        ...(open && !same ? { diagnosis: null, diagnosisScope: scope } : {}),
+      });
+    },
     diagnosis: null,
     diagnosisScope: [],
     diagnosisMock: false,
