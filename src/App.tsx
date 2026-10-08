@@ -6,6 +6,7 @@ import { PromptInput } from './components/PromptBar/PromptInput';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TemplateGalleryModal } from './components/Templates/TemplateGalleryModal';
 import { TestScenarioModal } from './components/TestScenarios/TestScenarioModal';
+import { DiagnoseModal } from './components/Diagnose/DiagnoseModal';
 import { SystemCatalogModal } from './components/Systems/SystemCatalogModal';
 import { InterfaceCatalogModal } from './components/Interfaces/InterfaceCatalogModal';
 import { useBreakpoint } from './hooks/useMediaQuery';
@@ -71,6 +72,7 @@ export default function App() {
       {!readOnly && <TestScenarioModal />}
       {!readOnly && <SystemCatalogModal />}
       {!readOnly && <InterfaceCatalogModal />}
+      {!readOnly && <DiagnoseModal />}
     </div>
   );
 }

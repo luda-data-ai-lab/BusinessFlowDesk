@@ -3,6 +3,15 @@ import type { RoleType } from '../src/types/role';
 import { buildSystemPrompt, buildUserPrompt } from '../src/services/ai/prompts';
 import { generateMockFlow } from '../src/services/ai/mockFlow';
 import { extractJson, isAIFlowResponse } from '../src/utils/flowParser';
+import type { DiagnoseRequest, DiagnoseResponse } from '../src/types/diagnose';
+import {
+  buildDiagnoseSystemPrompt,
+  buildDiagnoseUserPrompt,
+  MAX_FOCUS,
+  MAX_SCOPE,
+  mockDiagnose,
+  sanitizeDiagnosis,
+} from '../src/services/ai/diagnose';
 
 const ROLES: RoleType[] = ['operations', 'pm', 'developer', 'executive', 'consultant'];
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -30,6 +39,99 @@ export function parseRequest(raw: unknown): GenerateRequest | { error: string } 
         .slice(0, 50)
     : [];
   return { prompt, role, existingFlow, language, systems };
+}
+
+export interface DiagnoseResult {
+  status: number;
+  body: DiagnoseResponse | { error: string };
+}
+
+export function parseDiagnoseRequest(raw: unknown): DiagnoseRequest | { error: string } {
+  if (!raw || typeof raw !== 'object') return { error: 'Request body must be a JSON object' };
+  const body = raw as Record<string, unknown>;
+  if (!isAIFlowResponse(body.flow)) return { error: '`flow` is required' };
+  const flow = body.flow as AIFlowResponse;
+  const scope = Array.isArray(body.scope)
+    ? body.scope.filter((s): s is string => typeof s === 'string').slice(0, MAX_SCOPE)
+    : [];
+  const interfaces: Record<string, string> = {};
+  if (body.interfaces && typeof body.interfaces === 'object') {
+    for (const [k, v] of Object.entries(body.interfaces as Record<string, unknown>))
+      if (typeof v === 'string' && v.trim()) interfaces[k] = v.trim().slice(0, 30);
+  }
+  const focus = typeof body.focus === 'string' ? body.focus.trim().slice(0, MAX_FOCUS) : undefined;
+  const language = body.language === 'en' ? 'en' : 'ko';
+  return { flow, scope, interfaces, focus, language };
+}
+
+async function callClaude(
+  apiKey: string,
+  model: string,
+  system: string,
+  user: string,
+  maxTokens: number,
+): Promise<{ ok: true; text: string } | { ok: false; status: number; message: string }> {
+  const response = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }],
+    }),
+  });
+  const data = (await response.json().catch(() => null)) as AnthropicMessage | null;
+  if (!response.ok || !data) {
+    return {
+      ok: false,
+      status: response.status >= 400 && response.status < 600 ? 502 : 500,
+      message: data?.error?.message ?? `Claude API error (${response.status})`,
+    };
+  }
+  return {
+    ok: true,
+    text: (data.content ?? [])
+      .filter((c) => c.type === 'text' && typeof c.text === 'string')
+      .map((c) => c.text)
+      .join('\n'),
+  };
+}
+
+export async function handleDiagnose(
+  raw: unknown,
+  env: { CLAUDE_API_KEY?: string; CLAUDE_MODEL?: string },
+): Promise<DiagnoseResult> {
+  const parsed = parseDiagnoseRequest(raw);
+  if ('error' in parsed) return { status: 400, body: { error: parsed.error } };
+  const apiKey = env.CLAUDE_API_KEY?.trim();
+  if (!apiKey) return { status: 200, body: { diagnosis: mockDiagnose(parsed), mock: true } };
+  const model = env.CLAUDE_MODEL?.trim() || DEFAULT_MODEL;
+  const res = await callClaude(
+    apiKey,
+    model,
+    buildDiagnoseSystemPrompt(parsed.language ?? 'ko'),
+    buildDiagnoseUserPrompt(parsed),
+    4096,
+  );
+  if (!res.ok) return { status: res.status, body: { error: res.message } };
+  let json: unknown;
+  try {
+    json = extractJson(res.text);
+  } catch {
+    return {
+      status: 502,
+      body: { error: 'Claude returned a non-JSON response. Please try again.' },
+    };
+  }
+  const diagnosis = sanitizeDiagnosis(json, parsed.flow);
+  if (!diagnosis)
+    return { status: 502, body: { error: 'Claude response did not match the diagnosis schema.' } };
+  return { status: 200, body: { diagnosis, mock: false, model } };
 }
 
 interface AnthropicMessage {

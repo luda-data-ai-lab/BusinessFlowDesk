@@ -1,17 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { loadEnv } from 'vite';
-import { handleGenerate } from './_handler';
+import { handleDiagnose, handleGenerate } from './_handler';
 
 /**
- * Serves /api/generate during `vite dev` (and `vite preview`) using the same handler
+ * Serves /api/generate and /api/diagnose during `vite dev` (and `vite preview`) using the same handler
  * that runs on Vercel, so the dev experience matches production.
  */
 export function devApiPlugin(): Plugin {
   let env: Record<string, string> = {};
 
   const middleware = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    if (!req.url?.startsWith('/api/generate')) return next();
+    const isGenerate = req.url?.startsWith('/api/generate');
+    const isDiagnose = req.url?.startsWith('/api/diagnose');
+    if (!isGenerate && !isDiagnose) return next();
     if (req.method !== 'POST') {
       res.statusCode = 405;
       res.setHeader('Content-Type', 'application/json');
@@ -30,10 +32,11 @@ export function devApiPlugin(): Plugin {
       return;
     }
     try {
-      const result = await handleGenerate(raw, {
+      const keys = {
         CLAUDE_API_KEY: env.CLAUDE_API_KEY ?? process.env.CLAUDE_API_KEY,
         CLAUDE_MODEL: env.CLAUDE_MODEL ?? process.env.CLAUDE_MODEL,
-      });
+      };
+      const result = isDiagnose ? await handleDiagnose(raw, keys) : await handleGenerate(raw, keys);
       res.statusCode = result.status;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(result.body));

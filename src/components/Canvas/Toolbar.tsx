@@ -46,6 +46,8 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
   const setSwimlanes = useFlowStore((s) => s.setSwimlanes);
   const nodeCount = useFlowStore((s) => s.nodes.length);
   const edgeCount = useFlowStore((s) => s.edges.length);
+  const selectedCount = useFlowStore((s) => s.selectedNodeIds.length);
+  const setDiagnoseOpen = useFlowStore((s) => s.setDiagnoseOpen);
 
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-border bg-white/95 p-1 shadow-md backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
@@ -100,6 +102,23 @@ export function Toolbar({ readOnly = false }: { readOnly?: boolean }) {
       <ToolButton label={t('fitView')} onClick={() => fitFlow(300, false)}>
         ⛶
       </ToolButton>
+      {!readOnly && (
+        <>
+          <div className="mx-1 h-5 w-px bg-border dark:bg-slate-600" />
+          <ToolButton
+            label={t('diagnoseTooltip')}
+            onClick={() => setDiagnoseOpen(true)}
+            disabled={nodeCount === 0}
+            active={selectedCount > 1}
+          >
+            🩺
+            <span className="ml-1 hidden text-xs sm:inline">
+              {t('diagnose')}
+              {selectedCount > 0 ? ` (${selectedCount})` : ''}
+            </span>
+          </ToolButton>
+        </>
+      )}
       <span className="ml-2 mr-1 hidden text-[11px] text-slate-400 sm:inline">
         {nodeCount} {t('nodes')} · {edgeCount} {t('edges')}
       </span>
