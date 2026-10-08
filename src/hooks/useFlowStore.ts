@@ -244,6 +244,15 @@ function initialState() {
 }
 
 export const useFlowStore = create<FlowState>((set, get) => {
+  /** Deleting a selection fires edge and node remove changes separately; snapshot once. */
+  let lastRemoveSnapshotAt = 0;
+  const pushRemoveHistory = () => {
+    const now = Date.now();
+    if (now - lastRemoveSnapshotAt < 100) return;
+    lastRemoveSnapshotAt = now;
+    pushHistory();
+  };
+
   const pushHistory = () => {
     const { nodes, edges, swimlanes, laneBy, history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
@@ -310,7 +319,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
       const dragStart = changes.some((c) => c.type === 'position' && c.dragging === true);
       const dragEnd = changes.some((c) => c.type === 'position' && c.dragging === false);
 
-      if (removing) pushHistory();
+      if (removing) pushRemoveHistory();
       if (dragStart && !dragSnapshotTaken) {
         pushHistory();
         dragSnapshotTaken = true;
@@ -359,7 +368,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     onEdgesChange: (changes) => {
-      if (changes.some((c) => c.type === 'remove')) pushHistory();
+      if (changes.some((c) => c.type === 'remove')) pushRemoveHistory();
       let selectedEdgeId: string | undefined;
       for (const c of changes) if (c.type === 'select' && c.selected) selectedEdgeId = c.id;
       set({
