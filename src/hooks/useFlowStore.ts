@@ -115,6 +115,8 @@ export interface FlowState {
   completeOnboarding: (role: RoleType) => void;
   setProjectTitle: (title: string) => void;
   selectNode: (id: string | null) => void;
+  /** Select exactly this node on the canvas (clears multi-selection). */
+  focusNode: (id: string) => void;
   selectEdge: (id: string | null) => void;
   addNode: (type: NodeType, position: XYPosition) => string;
   deleteNode: (id: string) => void;
@@ -396,6 +398,16 @@ export const useFlowStore = create<FlowState>((set, get) => {
     setProjectTitle: (projectTitle) => set({ projectTitle }),
     selectNode: (id) =>
       set({ selectedNodeId: id, selectedEdgeId: id ? null : get().selectedEdgeId }),
+    focusNode: (id) =>
+      set({
+        selectedNodeId: id,
+        selectedEdgeId: null,
+        selectedNodeIds: [id],
+        nodes: get().nodes.map((n) =>
+          n.selected === (n.id === id) ? n : { ...n, selected: n.id === id },
+        ),
+        edges: get().edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      }),
     selectEdge: (id) =>
       set({ selectedEdgeId: id, selectedNodeId: id ? null : get().selectedNodeId }),
 
