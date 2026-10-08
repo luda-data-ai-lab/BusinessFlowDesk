@@ -39,6 +39,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
   const addNode = useFlowStore((s) => s.addNode);
   const selectNode = useFlowStore((s) => s.selectNode);
   const selectEdge = useFlowStore((s) => s.selectEdge);
+  const setSelectedNodeIds = useFlowStore((s) => s.setSelectedNodeIds);
   const openTemplates = useFlowStore((s) => s.setTemplateGalleryOpen);
   const isGenerating = useFlowStore((s) => s.isGenerating);
   const fitViewToken = useFlowStore((s) => s.fitViewToken);
@@ -70,6 +71,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
 
   const onSelectionChange = useCallback(
     ({ nodes: sel, edges: selEdges }: OnSelectionChangeParams) => {
+      setSelectedNodeIds(sel.map((n) => n.id));
       if (sel.length > 0) selectNode(sel[0].id);
       else if (selEdges.length > 0) selectEdge(selEdges[0].id);
       else {
@@ -77,7 +79,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
         selectEdge(null);
       }
     },
-    [selectNode, selectEdge],
+    [selectNode, selectEdge, setSelectedNodeIds],
   );
 
   return (

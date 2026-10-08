@@ -30,6 +30,8 @@ import { newId, parseAIFlow, toAIFlow } from '../utils/flowParser';
 import { generateFlow } from '../services/ai/generateFlow';
 import type { BusinessSystem } from '../types/system';
 import type { BusinessInterface } from '../types/interface';
+import type { Diagnosis } from '../types/diagnose';
+import { requestDiagnosis } from '../services/ai/diagnoseFlow';
 import {
   loadInterfaces,
   MAX_INTERFACE_CODE,
@@ -168,6 +170,17 @@ export interface FlowState {
   removeInterface: (id: string) => void;
   testScenarioOpen: boolean;
   setTestScenarioOpen: (open: boolean) => void;
+  /** All currently selected node ids (multi-select); `selectedNodeId` is the primary one. */
+  selectedNodeIds: string[];
+  setSelectedNodeIds: (ids: string[]) => void;
+  diagnoseOpen: boolean;
+  setDiagnoseOpen: (open: boolean) => void;
+  diagnosis: Diagnosis | null;
+  diagnosisScope: string[];
+  diagnosisMock: boolean;
+  isDiagnosing: boolean;
+  diagnoseError: string | null;
+  runDiagnosis: (language: Language, focus?: string) => Promise<void>;
   toProject: () => FlowProject;
   refreshProjects: () => void;
   clearError: () => void;
@@ -814,6 +827,43 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
     testScenarioOpen: false,
     setTestScenarioOpen: (open) => set({ testScenarioOpen: open }),
+    selectedNodeIds: [],
+    setSelectedNodeIds: (ids) => {
+      const prev = get().selectedNodeIds;
+      if (prev.length === ids.length && prev.every((id, i) => id === ids[i])) return;
+      set({ selectedNodeIds: ids });
+    },
+    diagnoseOpen: false,
+    setDiagnoseOpen: (open) =>
+      set({ diagnoseOpen: open, diagnoseError: open ? get().diagnoseError : null }),
+    diagnosis: null,
+    diagnosisScope: [],
+    diagnosisMock: false,
+    isDiagnosing: false,
+    diagnoseError: null,
+    runDiagnosis: async (language, focus) => {
+      const { nodes, edges, projectTitle, selectedNodeIds } = get();
+      const scope = selectedNodeIds.filter((id) => nodes.some((n) => n.id === id));
+      const interfaces: Record<string, string> = {};
+      for (const e of edges)
+        if (e.data?.interface) interfaces[`${e.source}->${e.target}`] = e.data.interface;
+      set({ isDiagnosing: true, diagnoseError: null, diagnoseOpen: true, diagnosisScope: scope });
+      try {
+        const res = await requestDiagnosis({
+          flow: toAIFlow(nodes, edges, projectTitle),
+          scope,
+          interfaces,
+          focus,
+          language,
+        });
+        set({ diagnosis: res.diagnosis, diagnosisMock: res.mock, isDiagnosing: false });
+      } catch (err) {
+        set({
+          isDiagnosing: false,
+          diagnoseError: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
 
     applyTemplate: (flow) => {
       get().newProject();
