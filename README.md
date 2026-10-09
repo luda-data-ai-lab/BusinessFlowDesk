@@ -97,6 +97,20 @@ src/
 { "flow": { "title": "...", "nodes": [...], "edges": [...] }, "mock": false }
 ```
 
+### 호출 이력 저장 (Postgres, 선택)
+
+`.env`에 `DATABASE_URL`을 설정하면 `/api/generate`·`/api/diagnose` 호출마다 요청·응답·모델·소요시간이 `ai_calls` 테이블에 저장됩니다
+(스키마 `db/schema.sql`은 첫 요청 시 자동 적용, 없으면 저장 없이 동작). 저장 실패는 응답에 영향을 주지 않습니다.
+
+- `GET /api/history?kind=generate|diagnose&limit=50` → 최근 이력 목록 (`enabled:false`면 DB 미설정)
+- `GET /api/history?id=123` → 해당 호출의 전체 요청/응답 JSON
+
+```sql
+-- EC2 Postgres에 전용 사용자/DB 만들기
+CREATE USER bfd WITH PASSWORD '...';
+CREATE DATABASE businessflowdesk OWNER bfd;
+```
+
 ## 배포 (Vercel)
 
 1. 저장소를 Vercel에 연결합니다 (프레임워크: Vite).

@@ -12,6 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await handleDiagnose(raw, {
       CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
       CLAUDE_MODEL: process.env.CLAUDE_MODEL,
+      DATABASE_URL: process.env.DATABASE_URL,
     });
     res.status(result.status).json(result.body);
   } catch (err) {

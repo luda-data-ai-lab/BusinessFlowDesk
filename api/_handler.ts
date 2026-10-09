@@ -12,6 +12,13 @@ import {
   mockDiagnose,
   sanitizeDiagnosis,
 } from '../src/services/ai/diagnose';
+import { recordCall } from './_db';
+
+export interface HandlerEnv {
+  CLAUDE_API_KEY?: string;
+  CLAUDE_MODEL?: string;
+  DATABASE_URL?: string;
+}
 
 const ROLES: RoleType[] = ['operations', 'pm', 'developer', 'executive', 'consultant'];
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -102,10 +109,7 @@ async function callClaude(
   };
 }
 
-export async function handleDiagnose(
-  raw: unknown,
-  env: { CLAUDE_API_KEY?: string; CLAUDE_MODEL?: string },
-): Promise<DiagnoseResult> {
+async function diagnoseCore(raw: unknown, env: HandlerEnv): Promise<DiagnoseResult> {
   const parsed = parseDiagnoseRequest(raw);
   if ('error' in parsed) return { status: 400, body: { error: parsed.error } };
   const apiKey = env.CLAUDE_API_KEY?.trim();
@@ -139,10 +143,7 @@ interface AnthropicMessage {
   error?: { type: string; message: string };
 }
 
-export async function handleGenerate(
-  raw: unknown,
-  env: { CLAUDE_API_KEY?: string; CLAUDE_MODEL?: string },
-): Promise<HandlerResult> {
+async function generateCore(raw: unknown, env: HandlerEnv): Promise<HandlerResult> {
   const parsed = parseRequest(raw);
   if ('error' in parsed) return { status: 400, body: { error: parsed.error } };
 
@@ -205,4 +206,50 @@ export async function handleGenerate(
     return { status: 502, body: { error: 'Claude response did not match the flow schema.' } };
   }
   return { status: 200, body: { flow, mock: false, model } };
+}
+
+function asRecord(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+}
+
+/** Runs the handler and, when `DATABASE_URL` is set, stores the call in `ai_calls` (non-blocking). */
+export async function handleGenerate(raw: unknown, env: HandlerEnv): Promise<HandlerResult> {
+  const started = Date.now();
+  const result = await generateCore(raw, env);
+  const body = asRecord(raw);
+  const ok = !('error' in result.body);
+  void recordCall(env.DATABASE_URL, {
+    kind: 'generate',
+    status: result.status,
+    mock: ok && 'mock' in result.body ? result.body.mock : false,
+    model: ok && 'model' in result.body ? result.body.model : undefined,
+    role: typeof body.role === 'string' ? body.role : undefined,
+    language: typeof body.language === 'string' ? body.language : undefined,
+    prompt: typeof body.prompt === 'string' ? body.prompt : undefined,
+    request: raw,
+    response: ok ? result.body : undefined,
+    error: ok ? undefined : (result.body as { error: string }).error,
+    durationMs: Date.now() - started,
+  });
+  return result;
+}
+
+export async function handleDiagnose(raw: unknown, env: HandlerEnv): Promise<DiagnoseResult> {
+  const started = Date.now();
+  const result = await diagnoseCore(raw, env);
+  const body = asRecord(raw);
+  const ok = !('error' in result.body);
+  void recordCall(env.DATABASE_URL, {
+    kind: 'diagnose',
+    status: result.status,
+    mock: ok && 'mock' in result.body ? result.body.mock : false,
+    model: ok && 'model' in result.body ? result.body.model : undefined,
+    language: typeof body.language === 'string' ? body.language : undefined,
+    prompt: typeof body.focus === 'string' ? body.focus : undefined,
+    request: raw,
+    response: ok ? result.body : undefined,
+    error: ok ? undefined : (result.body as { error: string }).error,
+    durationMs: Date.now() - started,
+  });
+  return result;
 }
