@@ -33,13 +33,13 @@ export function DiagnoseModal() {
   const busy = useFlowStore((s) => s.isDiagnosing);
   const error = useFlowStore((s) => s.diagnoseError);
   const run = useFlowStore((s) => s.runDiagnosis);
-  const selectNode = useFlowStore((s) => s.selectNode);
+  const focusNode = useFlowStore((s) => s.focusNode);
   const projectTitle = useFlowStore((s) => s.projectTitle);
   const [focus, setFocus] = useState('');
   const [copied, setCopied] = useState(false);
 
   const label = (id: string) => nodes.find((n) => n.id === id)?.data.label ?? id;
-  const currentScope = busy || diagnosis ? scope : selectedIds;
+  const currentScope = busy ? scope : selectedIds;
   const scopeNodes = currentScope.filter((id) => nodes.some((n) => n.id === id));
 
   const copy = async () => {
@@ -54,7 +54,7 @@ export function DiagnoseModal() {
   const Chip = ({ id }: { id: string }) => (
     <button
       type="button"
-      onClick={() => selectNode(id)}
+      onClick={() => focusNode(id)}
       title={id}
       className="rounded-full border border-border bg-slate-50 px-2 py-0.5 text-xs text-slate-700 hover:bg-blue-50 hover:text-primary dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
     >
@@ -69,20 +69,6 @@ export function DiagnoseModal() {
       title={`🩺 ${t('diagnoseTitle')}`}
       widthClass="max-w-3xl"
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-          🩺 {t('diagnoseTitle')}
-        </h2>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="close"
-          className="rounded-md px-2 text-xl leading-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-        >
-          ×
-        </button>
-      </div>
-
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1 text-sm text-slate-700 dark:text-slate-200">
         <section className="rounded-lg border border-border bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-900/40">
           <div className="mb-1 font-medium">
