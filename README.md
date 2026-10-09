@@ -105,6 +105,11 @@ src/
 - `GET /api/history?kind=generate|diagnose&limit=50` → 최근 이력 목록 (`enabled:false`면 DB 미설정)
 - `GET /api/history?id=123` → 해당 호출의 전체 요청/응답 JSON
 
+같은 DB로 **팀 공유 저장**도 켜집니다 (헤더 **☁ 서버**):
+
+- `GET|PUT|DELETE /api/flows[?id=]` — 플로우 저장/목록/불러오기/삭제 (`flows` 테이블, id는 프로젝트 id)
+- `GET|PUT /api/catalog` — 시스템·인터페이스 카탈로그 공유본 (`catalog` 테이블)
+
 ```sql
 -- EC2 Postgres에 전용 사용자/DB 만들기
 CREATE USER bfd WITH PASSWORD '...';

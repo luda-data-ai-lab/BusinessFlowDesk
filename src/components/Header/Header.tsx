@@ -18,6 +18,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
   const setProjectTitle = useFlowStore((s) => s.setProjectTitle);
   const openTemplates = useFlowStore((s) => s.setTemplateGalleryOpen);
   const openSystems = useFlowStore((s) => s.setSystemCatalogOpen);
+  const openServer = useFlowStore((s) => s.setServerMenuOpen);
   const systemCount = useFlowStore((s) => s.systems.length);
   const openInterfaces = useFlowStore((s) => s.setInterfaceCatalogOpen);
   const interfaceCount = useFlowStore((s) => s.interfaces.length);
@@ -85,6 +86,16 @@ export function Header({ onToggleSidebar, sidebarCollapsed, readOnly = false }: 
           >
             🔗 <span className="hidden sm:inline">{t('interfaceCatalogShort')}</span>
             {interfaceCount > 0 && <span className="text-slate-400"> ({interfaceCount})</span>}
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => openServer(true)}
+            className="h-8 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+            title={t('serverTitle')}
+          >
+            ☁ <span className="hidden sm:inline">{t('server')}</span>
           </button>
         )}
         <RoleSelector />
