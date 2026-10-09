@@ -115,6 +115,8 @@ export interface FlowState {
   completeOnboarding: (role: RoleType) => void;
   setProjectTitle: (title: string) => void;
   selectNode: (id: string | null) => void;
+  /** Select exactly this node on the canvas (clears multi-selection). */
+  focusNode: (id: string) => void;
   selectEdge: (id: string | null) => void;
   addNode: (type: NodeType, position: XYPosition) => string;
   deleteNode: (id: string) => void;
@@ -242,6 +244,15 @@ function initialState() {
 }
 
 export const useFlowStore = create<FlowState>((set, get) => {
+  /** Deleting a selection fires edge and node remove changes separately; snapshot once. */
+  let lastRemoveSnapshotAt = 0;
+  const pushRemoveHistory = () => {
+    const now = Date.now();
+    if (now - lastRemoveSnapshotAt < 100) return;
+    lastRemoveSnapshotAt = now;
+    pushHistory();
+  };
+
   const pushHistory = () => {
     const { nodes, edges, swimlanes, laneBy, history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
@@ -308,7 +319,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
       const dragStart = changes.some((c) => c.type === 'position' && c.dragging === true);
       const dragEnd = changes.some((c) => c.type === 'position' && c.dragging === false);
 
-      if (removing) pushHistory();
+      if (removing) pushRemoveHistory();
       if (dragStart && !dragSnapshotTaken) {
         pushHistory();
         dragSnapshotTaken = true;
@@ -357,7 +368,7 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     onEdgesChange: (changes) => {
-      if (changes.some((c) => c.type === 'remove')) pushHistory();
+      if (changes.some((c) => c.type === 'remove')) pushRemoveHistory();
       let selectedEdgeId: string | undefined;
       for (const c of changes) if (c.type === 'select' && c.selected) selectedEdgeId = c.id;
       set({
@@ -396,6 +407,16 @@ export const useFlowStore = create<FlowState>((set, get) => {
     setProjectTitle: (projectTitle) => set({ projectTitle }),
     selectNode: (id) =>
       set({ selectedNodeId: id, selectedEdgeId: id ? null : get().selectedEdgeId }),
+    focusNode: (id) =>
+      set({
+        selectedNodeId: id,
+        selectedEdgeId: null,
+        selectedNodeIds: [id],
+        nodes: get().nodes.map((n) =>
+          n.selected === (n.id === id) ? n : { ...n, selected: n.id === id },
+        ),
+        edges: get().edges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      }),
     selectEdge: (id) =>
       set({ selectedEdgeId: id, selectedNodeId: id ? null : get().selectedNodeId }),
 
@@ -834,8 +855,17 @@ export const useFlowStore = create<FlowState>((set, get) => {
       set({ selectedNodeIds: ids });
     },
     diagnoseOpen: false,
-    setDiagnoseOpen: (open) =>
-      set({ diagnoseOpen: open, diagnoseError: open ? get().diagnoseError : null }),
+    setDiagnoseOpen: (open) => {
+      const { selectedNodeIds, diagnosisScope, nodes } = get();
+      const scope = selectedNodeIds.filter((id) => nodes.some((n) => n.id === id));
+      const same =
+        scope.length === diagnosisScope.length && scope.every((id) => diagnosisScope.includes(id));
+      set({
+        diagnoseOpen: open,
+        diagnoseError: null,
+        ...(open && !same ? { diagnosis: null, diagnosisScope: scope } : {}),
+      });
+    },
     diagnosis: null,
     diagnosisScope: [],
     diagnosisMock: false,
