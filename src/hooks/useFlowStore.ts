@@ -141,6 +141,8 @@ export interface FlowState {
   loadProject: (id: string) => void;
   deleteProject: (id: string) => void;
   importProject: (project: FlowProject) => void;
+  /** Like importProject but keeps the project id (server-stored flows keep one identity). */
+  importProjectKeepId: (project: FlowProject) => void;
   /** Starts a new project from a template flow (already localized). */
   applyTemplate: (flow: AIFlowResponse) => void;
   templateGalleryOpen: boolean;
@@ -183,6 +185,10 @@ export interface FlowState {
   runDiagnosis: (language: Language, focus?: string) => Promise<void>;
   toProject: () => FlowProject;
   refreshProjects: () => void;
+  serverMenuOpen: boolean;
+  setServerMenuOpen: (open: boolean) => void;
+  /** Replace the local system/interface catalog (used when pulling the shared catalog). */
+  replaceCatalog: (systems: BusinessSystem[], interfaces: BusinessInterface[]) => void;
   clearError: () => void;
   clearNotice: () => void;
 }
@@ -682,6 +688,21 @@ export const useFlowStore = create<FlowState>((set, get) => {
       get().loadProject(imported.id);
     },
 
+    importProjectKeepId: (project) => {
+      const imported: FlowProject = {
+        ...project,
+        title: project.title || '',
+        role: project.role ?? get().currentRole,
+        layoutDirection: project.layoutDirection ?? 'TB',
+        createdAt: project.createdAt ?? nowIso(),
+        updatedAt: nowIso(),
+        version: 1,
+      };
+      const projects = upsertProject(imported);
+      set({ projects });
+      get().loadProject(imported.id);
+    },
+
     templateGalleryOpen: false,
     setTemplateGalleryOpen: (open) => set({ templateGalleryOpen: open }),
 
@@ -906,6 +927,13 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     refreshProjects: () => set({ projects: loadProjects() }),
+    serverMenuOpen: false,
+    setServerMenuOpen: (open) => set({ serverMenuOpen: open }),
+    replaceCatalog: (systems, interfaces) => {
+      saveSystems(systems);
+      saveInterfaces(interfaces);
+      set({ systems, interfaces });
+    },
     clearError: () => set({ error: null }),
     clearNotice: () => set({ notice: null }),
   };

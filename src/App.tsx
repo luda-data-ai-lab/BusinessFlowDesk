@@ -7,6 +7,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { TemplateGalleryModal } from './components/Templates/TemplateGalleryModal';
 import { TestScenarioModal } from './components/TestScenarios/TestScenarioModal';
 import { DiagnoseModal } from './components/Diagnose/DiagnoseModal';
+import { ServerModal } from './components/Server/ServerModal';
 import { SystemCatalogModal } from './components/Systems/SystemCatalogModal';
 import { InterfaceCatalogModal } from './components/Interfaces/InterfaceCatalogModal';
 import { useBreakpoint } from './hooks/useMediaQuery';
@@ -73,6 +74,7 @@ export default function App() {
       {!readOnly && <SystemCatalogModal />}
       {!readOnly && <InterfaceCatalogModal />}
       {!readOnly && <DiagnoseModal />}
+      {!readOnly && <ServerModal />}
     </div>
   );
 }
