@@ -122,6 +122,21 @@ CREATE DATABASE businessflowdesk OWNER bfd;
 2. 환경 변수 `CLAUDE_API_KEY`(필수), `CLAUDE_MODEL`(선택, 기본 `claude-sonnet-4-6`)을 설정합니다.
 3. `api/generate.ts`가 Serverless Function으로 자동 배포됩니다.
 
+## 배포 (EC2 / 자체 서버, nginx + pm2)
+
+`vite preview`가 정적 파일과 `/api/*`를 함께 서빙하므로 별도 서버 코드가 필요 없습니다.
+
+```bash
+npm install && npm run build
+cp .env.example .env   # CLAUDE_API_KEY, ALLOWED_HOSTS=bf.example.com, PORT=5175
+pm2 start npm --name businessflowdesk -- run preview -- --host 127.0.0.1 --strictPort
+pm2 save
+```
+
+nginx는 `proxy_pass http://127.0.0.1:5175;` 로 프록시하고 `proxy_read_timeout 120s;`(Claude 응답 대기)를 둡니다.
+`ALLOWED_HOSTS`에 도메인을 넣지 않으면 Vite가 `Blocked request. This host ... is not allowed` 로 거부합니다.
+업데이트: `git pull && npm install && npm run build && pm2 restart businessflowdesk`.
+
 ## 라이선스
 
 MIT

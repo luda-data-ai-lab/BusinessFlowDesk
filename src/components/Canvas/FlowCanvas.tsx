@@ -98,6 +98,7 @@ function CanvasInner({ readOnly = false }: FlowCanvasProps) {
         minZoom={0.1}
         maxZoom={2.5}
         selectionMode={SelectionMode.Partial}
+        multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
         panOnScroll={false}
         zoomOnScroll
         nodesDraggable={!readOnly}
